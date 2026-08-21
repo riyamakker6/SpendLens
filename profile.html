@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile &amp; Settings — Spendlens</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+  <div class="mobile-header">
+    <a href="index.html" class="mobile-logo"><span class="logo-accent">Spendlens</span></a>
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <aside class="sidebar" id="sidebar">
+    <a href="index.html" class="sidebar-logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span class="logo-accent">Spendlens</span>
+    </a>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>Dashboard</a>
+      <a href="subscriptions.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Subscriptions</a>
+      <a href="optimizer.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>Cost Leak Detector</a>
+      <a href="insights.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>Analytics</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="profile.html" class="active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Profile &amp; Settings
+      </a>
+    </div>
+  </aside>
+  <main class="main-content">
+    <div class="container-fluid">
+
+      <div class="page-header">
+        <div>
+          <span class="badge">Account &amp; Settings</span>
+          <h1>Profile &amp; Settings</h1>
+          <p>Manage your personal profile, customize your theme, and configure settings.</p>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="logout()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          Logout
+        </button>
+      </div>
+
+      <div class="profile-grid">
+        <!-- Left: Avatar & quick info -->
+        <div>
+          <div class="profile-avatar-card">
+            <div class="avatar-wrap">
+              <div class="avatar-circle" id="avatarDisplay">?</div>
+              <label class="avatar-upload-btn" for="profileImageInput" title="Upload photo">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              </label>
+              <input type="file" id="profileImageInput" accept="image/*" style="display:none;">
+            </div>
+            <p class="profile-name" id="profileName">—</p>
+            <p class="profile-email" id="profileEmail">—</p>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;" id="removePhotoBtn">Remove Photo</button>
+          </div>
+
+          <div class="dashboard-panel" style="margin-top:16px;">
+            <div class="panel-header"><div><h2>Account Details</h2><p>Update personal information.</p></div></div>
+            <div style="padding:16px 24px;">
+              <div id="profileError" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:10px 14px;border-radius:8px;font-size:0.85rem;margin-bottom:12px;"></div>
+              
+              <div class="form-group">
+                <label for="editName">Full Name</label>
+                <input type="text" id="editName" placeholder="Your name" required>
+              </div>
+              <div class="form-group">
+                <label for="editEmail">Email Address</label>
+                <input type="email" id="editEmail" placeholder="your.email@example.com" required>
+              </div>
+              <button class="btn btn-primary" style="width:100%;" id="saveProfileBtn">Save Profile</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Theme + Subscription Summary -->
+        <div>
+          <div class="dashboard-panel">
+            <div class="panel-header"><div><h2>🎨 Customize Your Theme</h2><p>Choose your preferred color style.</p></div></div>
+            <div style="padding:20px 24px;">
+              <div class="themes-grid" id="themeGrid"></div>
+            </div>
+          </div>
+
+          <div class="dashboard-panel">
+            <div class="panel-header"><div><h2>📊 Subscription Summary</h2><p>Overview of your current account data.</p></div></div>
+            <div style="padding:16px 24px;">
+              <div class="budget-info" style="padding:0;margin-bottom:16px;">
+                <div><span>Total Tracked</span><strong id="profileTotalSubs">0</strong></div>
+                <div><span>Active</span><strong id="profileActiveSubs">0</strong></div>
+                <div><span>Monthly Spend</span><strong id="profileMonthly">₹0</strong></div>
+              </div>
+              <div style="display:flex;gap:10px;">
+                <a href="dashboard.html" class="btn btn-secondary" style="flex:1;">View Dashboard</a>
+                <a href="subscriptions.html" class="btn btn-primary" style="flex:1;">Manage Subscriptions</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="script.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (!requireLogin()) return;
+  const user = getCurrentUser();
+
+  function loadUserProfile() {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    
+    document.getElementById("profileName").textContent = currentUser.name || "User";
+    document.getElementById("profileEmail").textContent = currentUser.email || "—";
+    document.getElementById("editName").value = currentUser.name || "";
+    document.getElementById("editEmail").value = currentUser.email || "";
+
+    updateAvatar(currentUser);
+    updateSummary();
+  }
+
+  function updateAvatar(currentUser) {
+    const img = localStorage.getItem(STORAGE.profileImage);
+    const el = document.getElementById("avatarDisplay");
+    if (img) {
+      el.innerHTML = `<img src="${img}" alt="Profile" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+      el.innerHTML = escapeHTML((currentUser.name || "U")[0].toUpperCase());
+    }
+  }
+
+  function updateSummary() {
+    const subs = getUserSubscriptions();
+    const active = subs.filter(s => String(s.status || "Active").toLowerCase() === "active");
+    const monthly = getMonthlyTotal();
+
+    document.getElementById("profileTotalSubs").textContent = subs.length;
+    document.getElementById("profileActiveSubs").textContent = active.length;
+    document.getElementById("profileMonthly").textContent = money(monthly);
+  }
+
+  document.getElementById("profileImageInput").addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image size should be less than 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      localStorage.setItem(STORAGE.profileImage, e.target.result);
+      updateAvatar(getCurrentUser());
+      showToast("Profile photo updated successfully!");
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("removePhotoBtn").addEventListener("click", () => {
+    localStorage.removeItem(STORAGE.profileImage);
+    updateAvatar(getCurrentUser());
+    showToast("Profile photo removed.");
+  });
+
+  document.getElementById("saveProfileBtn").addEventListener("click", () => {
+    const newName = document.getElementById("editName").value.trim();
+    const newEmail = document.getElementById("editEmail").value.trim();
+    const err = document.getElementById("profileError");
+
+    if (!newName || !newEmail) {
+      err.style.display = "block";
+      err.textContent = "Please provide both your full name and a valid email address.";
+      return;
+    }
+    err.style.display = "none";
+
+    const currentUser = getCurrentUser();
+    const users = getUsers();
+    const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, name: newName, email: newEmail } : u);
+    saveUsers(updatedUsers);
+
+    const updatedCurrent = { ...currentUser, name: newName, email: newEmail };
+    setCurrentUser(updatedCurrent);
+
+    loadUserProfile();
+    showToast("Profile updated successfully!");
+  });
+
+  // Themes list
+  const themes = [
+    { id: "light", name: "Default Light", bg: "linear-gradient(135deg,#F8FAFC,#E0F2FE)" },
+    { id: "dark", name: "Dark Mode", bg: "linear-gradient(135deg,#0B1120,#111827)" },
+    { id: "lavender", name: "Lavender", bg: "linear-gradient(135deg,#fdfcff,#ede0ff)" },
+    { id: "spider-man", name: "Spider-Man", bg: "linear-gradient(135deg,#0d1b2a,#e23636)" },
+    { id: "doraemon", name: "Doraemon", bg: "linear-gradient(135deg,#f0f8ff,#0096e0)" },
+    { id: "batman", name: "Batman", bg: "linear-gradient(135deg,#121212,#f8e825)" },
+    { id: "naruto", name: "Naruto", bg: "linear-gradient(135deg,#fff8f0,#fd7e14)" },
+    { id: "barbie", name: "Barbie", bg: "linear-gradient(135deg,#fdf0f5,#e0218a)" },
+    { id: "cyberpunk", name: "Cyberpunk", bg: "linear-gradient(135deg,#000b18,#00ff9f)" },
+    { id: "space", name: "Space", bg: "linear-gradient(135deg,#03001C,#b388eb)" },
+    { id: "ocean", name: "Ocean", bg: "linear-gradient(135deg,#caf0f8,#0077b6)" },
+    { id: "nature", name: "Nature", bg: "linear-gradient(135deg,#f0faf4,#40916c)" },
+    { id: "gaming", name: "Gaming", bg: "linear-gradient(135deg,#13111c,#7c3aed)" }
+  ];
+
+  const savedTheme = localStorage.getItem(STORAGE.theme) || "light";
+  const grid = document.getElementById("themeGrid");
+  grid.innerHTML = themes.map(t => `
+    <div class="theme-card ${t.id === savedTheme ? "selected" : ""}" onclick="applyTheme('${t.id}', this)">
+      <div class="theme-swatch" style="background:${t.bg};"></div>
+      <div class="theme-name">${escapeHTML(t.name)}</div>
+    </div>
+  `).join("");
+
+  window.applyTheme = function(id, el) {
+    localStorage.setItem(STORAGE.theme, id);
+    document.documentElement.setAttribute("data-theme", id);
+    document.querySelectorAll(".theme-card").forEach(c => c.classList.remove("selected"));
+    if (el) el.classList.add("selected");
+    showToast(`Applied ${id} theme!`);
+    const btn = document.getElementById("themeToggle");
+    if (btn) btn.textContent = id === "dark" ? "☀️" : "🌙";
+  };
+
+  loadUserProfile();
+});
+</script>
+</body>
+</html>
