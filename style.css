@@ -2197,3 +2197,17 @@ footer {
     justify-content: center;
   }
 }
+
+/* Back to Home Arrow */
+.back-arrow {
+  font-size: 22px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.sidebar-logo:hover .back-arrow {
+  color: #078dcc;
+  transform: translateX(-3px);
+}
