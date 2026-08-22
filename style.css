@@ -2211,3 +2211,40 @@ footer {
   color: #078dcc;
   transform: translateX(-3px);
 }
+
+/* Back to Home + Spendlens branding */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 72px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-back {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-back:hover {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  transform: translateX(-2px);
+}
+
+.sidebar-brand .sidebar-logo {
+  padding: 0;
+  height: auto;
+  border: none;
+}
+
+
