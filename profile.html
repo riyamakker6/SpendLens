@@ -82,13 +82,19 @@
           </div>
         </div>
 
-        <!--  Right: Theme + Subscription Summary  -->
+        <!-- Right: Theme + Subscription Summary -->
         <div>
-          <div class="dashboard-panel">
-            <div class="panel-header"><div><h2>🎨 Customize Your Theme</h2><p>Choose your preferred color style.</p></div></div>
-            <div style="padding:20px 24px;">
-              <div class="themes-grid" id="themeGrid"></div>
+          <!-- Theme Teaser Card (visible on profile page) -->
+          <div class="theme-teaser" id="themeTeaserCard">
+            <div class="theme-teaser-icon">🎨</div>
+            <div class="theme-teaser-body">
+              <p class="theme-teaser-title">Want to personalize your experience?</p>
+              <p class="theme-teaser-sub">Choose a theme and make SpendLens truly yours.</p>
             </div>
+            <button class="btn btn-primary btn-sm theme-teaser-btn" onclick="openThemeView()">
+              Customize Theme
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
           </div>
 
           <div class="dashboard-panel">
@@ -109,12 +115,29 @@
       </div>
 
     </div>
+
+    <!-- ── Theme View (hidden until "Customize Theme" is clicked) ── -->
+    <div class="theme-view" id="themeView" aria-hidden="true">
+      <div class="theme-view-inner">
+        <button class="theme-view-back" onclick="closeThemeView()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Profile &amp; Settings
+        </button>
+        <div class="theme-view-header">
+          <span class="theme-view-emoji">🎨</span>
+          <div>
+            <h2 class="theme-view-title">Customize Your Theme</h2>
+            <p class="theme-view-sub">Choose your preferred color style.</p>
+          </div>
+        </div>
+        <div class="themes-grid" id="themeGrid"></div>
+      </div>
+    </div>
   </main>
 </div>
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
 <script>
-  // java script
 document.addEventListener("DOMContentLoaded", () => {
   if (!requireLogin()) return;
   const user = getCurrentUser();
@@ -198,31 +221,60 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Profile updated successfully!");
   });
 
-  // Themes list
+  // ── Themes ──
   const themes = [
-    { id: "light", name: "Default Light", bg: "linear-gradient(135deg,#F8FAFC,#E0F2FE)" },
-    { id: "dark", name: "Dark Mode", bg: "linear-gradient(135deg,#0B1120,#111827)" },
-    { id: "lavender", name: "Lavender", bg: "linear-gradient(135deg,#fdfcff,#ede0ff)" },
-    { id: "spider-man", name: "Spider-Man", bg: "linear-gradient(135deg,#0d1b2a,#e23636)" },
-    { id: "doraemon", name: "Doraemon", bg: "linear-gradient(135deg,#f0f8ff,#0096e0)" },
-    { id: "batman", name: "Batman", bg: "linear-gradient(135deg,#121212,#f8e825)" },
-    { id: "naruto", name: "Naruto", bg: "linear-gradient(135deg,#fff8f0,#fd7e14)" },
-    { id: "barbie", name: "Barbie", bg: "linear-gradient(135deg,#fdf0f5,#e0218a)" },
-    { id: "cyberpunk", name: "Cyberpunk", bg: "linear-gradient(135deg,#000b18,#00ff9f)" },
-    { id: "space", name: "Space", bg: "linear-gradient(135deg,#03001C,#b388eb)" },
-    { id: "ocean", name: "Ocean", bg: "linear-gradient(135deg,#caf0f8,#0077b6)" },
-    { id: "nature", name: "Nature", bg: "linear-gradient(135deg,#f0faf4,#40916c)" },
-    { id: "gaming", name: "Gaming", bg: "linear-gradient(135deg,#13111c,#7c3aed)" }
+    { id: "light",      name: "Default Light", icon: "☀️",  bg: "linear-gradient(135deg,#F8FAFC,#E0F2FE)" },
+    { id: "dark",       name: "Dark Mode",     icon: "🌙",  bg: "linear-gradient(135deg,#0B1120,#111827)" },
+    { id: "lavender",   name: "Lavender",      icon: "🌿",  bg: "linear-gradient(135deg,#fdfcff,#ede0ff)" },
+    { id: "spider-man", name: "Spider-Man",    icon: "🕷️", bg: "linear-gradient(135deg,#0d1b2a,#e23636)" },
+    { id: "doraemon",   name: "Doraemon",      icon: "🔵",  bg: "linear-gradient(135deg,#f0f8ff,#0096e0)" },
+    { id: "batman",     name: "Batman",        icon: "🦇",  bg: "linear-gradient(135deg,#121212,#f8e825)" },
+    { id: "naruto",     name: "Naruto",        icon: "🍥",  bg: "linear-gradient(135deg,#fff8f0,#fd7e14)" },
+    { id: "barbie",     name: "Barbie",        icon: "💗",  bg: "linear-gradient(135deg,#fdf0f5,#e0218a)" },
+    { id: "cyberpunk",  name: "Cyberpunk",     icon: "⚡",  bg: "linear-gradient(135deg,#000b18,#00ff9f)" },
+    { id: "space",      name: "Space",         icon: "🪐",  bg: "linear-gradient(135deg,#03001C,#b388eb)" },
+    { id: "ocean",      name: "Ocean",         icon: "🌊",  bg: "linear-gradient(135deg,#caf0f8,#0077b6)" },
+    { id: "nature",     name: "Nature",        icon: "🌱",  bg: "linear-gradient(135deg,#f0faf4,#40916c)" },
+    { id: "gaming",     name: "Gaming",        icon: "🎮",  bg: "linear-gradient(135deg,#13111c,#7c3aed)" }
   ];
 
-  const savedTheme = localStorage.getItem(STORAGE.theme) || "light";
-  const grid = document.getElementById("themeGrid");
-  grid.innerHTML = themes.map(t => `
-    <div class="theme-card ${t.id === savedTheme ? "selected" : ""}" onclick="applyTheme('${t.id}', this)">
-      <div class="theme-swatch" style="background:${t.bg};"></div>
-      <div class="theme-name">${escapeHTML(t.name)}</div>
-    </div>
-  `).join("");
+  // Render theme grid
+  function renderThemeGrid() {
+    const savedTheme = localStorage.getItem(STORAGE.theme) || "light";
+    const grid = document.getElementById("themeGrid");
+    grid.innerHTML = themes.map(t => `
+      <div class="theme-card ${t.id === savedTheme ? "selected" : ""}" onclick="applyTheme('${t.id}', this)">
+        <div class="theme-check">✓</div>
+        <div class="theme-preview" style="background:${t.bg};">${t.icon}</div>
+        <div class="theme-info">
+          <div class="theme-name">${escapeHTML(t.name)}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+  renderThemeGrid();
+
+  // Theme view open / close
+  window.openThemeView = function() {
+    const view = document.getElementById("themeView");
+    const profileGrid = document.querySelector(".profile-grid");
+    const pageHeader = document.querySelector(".page-header");
+    view.classList.add("open");
+    view.setAttribute("aria-hidden", "false");
+    if (profileGrid) profileGrid.style.display = "none";
+    if (pageHeader) pageHeader.style.display = "none";
+    renderThemeGrid();
+  };
+
+  window.closeThemeView = function() {
+    const view = document.getElementById("themeView");
+    const profileGrid = document.querySelector(".profile-grid");
+    const pageHeader = document.querySelector(".page-header");
+    view.classList.remove("open");
+    view.setAttribute("aria-hidden", "true");
+    if (profileGrid) profileGrid.style.display = "";
+    if (pageHeader) pageHeader.style.display = "";
+  };
 
   window.applyTheme = function(id, el) {
     localStorage.setItem(STORAGE.theme, id);
