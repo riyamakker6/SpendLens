@@ -55,12 +55,12 @@
           <h1 id="welcomeText" style="font-size:1.8rem;font-weight:800;margin:8px 0 4px;">Welcome back!</h1>
           <p style="color:var(--muted);font-size:0.95rem;">Here's an overview of your subscriptions and potential savings.</p>
         </div>
-        <div class="quick-actions">
-          <a href="add-subscription.html" class="btn btn-primary">
+        <div class="quick-actions" id="quickActions">
+          <a href="add-subscription.html" class="btn btn-primary" id="addSubBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Subscription
           </a>
-          <button id="demoBtn" class="btn btn-secondary">Quick Demo </button>
+          <button id="demoBtn" class="btn btn-secondary">Quick Demo</button>
         </div>
       </div>
 
@@ -118,6 +118,7 @@
         <div class="progress"><div id="budgetProgress" class="progress-bar" style="width:0%"></div></div>
         <p id="budgetMessage" class="budget-message">No budget set.</p>
       </div>
+
       <!-- RECENT -->
       <div class="dashboard-panel">
         <div class="panel-header">
@@ -143,12 +144,10 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   if (!requireLogin()) return;
+
   const user = getCurrentUser();
 
-  if (user && user.name) {
-    document.getElementById("welcomeText").textContent = "Good to see you, " + user.name + "! 👋";
-  }
-
+  // ---- Time greeting badge ----
   const hour = new Date().getHours();
   const badgeEl = document.getElementById("timeBadge");
   if (badgeEl) {
@@ -156,6 +155,67 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (hour >= 12 && hour < 17) badgeEl.textContent = "Good Afternoon ☀️";
     else if (hour >= 17 && hour < 21) badgeEl.textContent = "Good Evening 🌆";
     else badgeEl.textContent = "Good Night 🌙";
+  }
+
+  // ---- Apply demo mode UI state ----
+  function applyDemoUI() {
+    const demo = isDemoMode();
+    const demoBtn = document.getElementById("demoBtn");
+    const addSubBtn = document.getElementById("addSubBtn");
+    const setBudgetBtn = document.getElementById("setBudgetBtn");
+    const welcomeEl = document.getElementById("welcomeText");
+    const badgeArea = document.getElementById("timeBadge").parentElement;
+
+    // Remove any existing demo badge
+    const existingBadge = document.getElementById("demoModeBadge");
+    if (existingBadge) existingBadge.remove();
+
+    if (demo) {
+      // Update welcome text for demo
+      if (welcomeEl) {
+        welcomeEl.textContent = "Good to see you, Demo User! 👋";
+      }
+      // Inject DEMO MODE badge next to welcome text
+      const badge = document.createElement("span");
+      badge.id = "demoModeBadge";
+      badge.className = "demo-mode-badge";
+      badge.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg> Demo Mode`;
+      if (welcomeEl) welcomeEl.insertAdjacentElement("afterend", badge);
+
+      // Switch button to "Exit Demo"
+      if (demoBtn) {
+        demoBtn.textContent = "✕ Exit Demo";
+        demoBtn.classList.remove("btn-secondary");
+        demoBtn.classList.add("btn-demo-active");
+      }
+      // Hide Add Subscription button
+      if (addSubBtn) addSubBtn.style.display = "none";
+      // Disable Set Budget in demo mode
+      if (setBudgetBtn) {
+        setBudgetBtn.disabled = true;
+        setBudgetBtn.title = "Budget editing is disabled in Demo Mode";
+        setBudgetBtn.style.opacity = "0.45";
+        setBudgetBtn.style.cursor = "not-allowed";
+      }
+    } else {
+      // Normal personal account
+      const authUser = getAuthenticatedUser();
+      if (authUser && authUser.name) {
+        if (welcomeEl) welcomeEl.textContent = "Good to see you, " + authUser.name + "! 👋";
+      }
+      if (demoBtn) {
+        demoBtn.textContent = "Quick Demo";
+        demoBtn.classList.remove("btn-demo-active");
+        demoBtn.classList.add("btn-secondary");
+      }
+      if (addSubBtn) addSubBtn.style.display = "";
+      if (setBudgetBtn) {
+        setBudgetBtn.disabled = false;
+        setBudgetBtn.title = "";
+        setBudgetBtn.style.opacity = "";
+        setBudgetBtn.style.cursor = "";
+      }
+    }
   }
 
   function renderDashboard() {
@@ -199,8 +259,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderRecent(subscriptions) {
     const container = document.getElementById("recentSubscriptions");
+    const demo = isDemoMode();
     if (!subscriptions || !subscriptions.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><h3>No subscriptions yet</h3><p>Add your first subscription to start tracking your spending and discover potential savings.</p><a href="add-subscription.html" class="btn btn-primary" style="margin-top:8px;">Add Subscription</a></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><h3>No subscriptions yet</h3><p>Add your first subscription to start tracking your spending and discover potential savings.</p>${!demo ? '<a href="add-subscription.html" class="btn btn-primary" style="margin-top:8px;">Add Subscription</a>' : ''}</div>`;
       return;
     }
     const recent = [...subscriptions].reverse().slice(0, 5);
@@ -260,7 +321,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderBudget(monthly) {
-    const budget = Number(localStorage.getItem(STORAGE.budget) || 0);
+    // In demo mode read from demo budget key, never touch personal budget
+    const budgetKey = isDemoMode() ? STORAGE.demoBudget : STORAGE.budget;
+    const budget = Number(localStorage.getItem(budgetKey) || 0);
     document.getElementById("budgetAmount").textContent = money(budget);
     document.getElementById("budgetSpent").textContent = money(monthly);
     const remaining = budget - monthly;
@@ -287,6 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("setBudgetBtn").addEventListener("click", () => {
+    if (isDemoMode()) return; // Guard: no budget editing in demo mode
     const current = localStorage.getItem(STORAGE.budget) || "";
     const val = prompt("Set monthly budget (₹):", current);
     if (val !== null) {
@@ -301,36 +365,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ---- Quick Demo / Exit Demo button ----
   document.getElementById("demoBtn").addEventListener("click", () => {
-    const user = getCurrentUser();
-    if (!user) return;
+    if (isDemoMode()) {
+      // EXIT DEMO MODE
+      exitDemoMode((restoredUser) => {
+        if (restoredUser) {
+          // CASE 2: Personal account restored in-place without logout!
+          const banner = document.getElementById("demoBanner");
+          if (banner) banner.remove();
+          const sideLabel = document.getElementById("sidebarDemoLabel");
+          if (sideLabel) sideLabel.remove();
 
-    const today = new Date();
-    const dPlus = (days) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + days);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
-    const demo = [
-      { id: generateId(), userId: user.id, name: "Netflix", category: "Entertainment", cost: 649, billingCycle: "Monthly", monthlyCost: 649, renewalDate: dPlus(1), status: "Active", paymentMethod: "Credit Card", priority: "High Priority", notes: "Premium 4K plan" },
-      { id: generateId(), userId: user.id, name: "Disney+ Hotstar", category: "Entertainment", cost: 299, billingCycle: "Monthly", monthlyCost: 299, renewalDate: dPlus(8), status: "Active", paymentMethod: "Credit Card", priority: "Medium Priority", notes: "Streaming overlap" },
-      { id: generateId(), userId: user.id, name: "Amazon Prime", category: "Entertainment", cost: 1499, billingCycle: "Yearly", monthlyCost: 124.92, renewalDate: dPlus(25), status: "Active", paymentMethod: "UPI", priority: "High Priority", notes: "Prime video & delivery" },
-      { id: generateId(), userId: user.id, name: "Spotify", category: "Music", cost: 119, billingCycle: "Monthly", monthlyCost: 119, renewalDate: dPlus(4), status: "Active", paymentMethod: "UPI", priority: "High Priority", notes: "Individual plan" },
-      { id: generateId(), userId: user.id, name: "YouTube Premium", category: "Music", cost: 129, billingCycle: "Monthly", monthlyCost: 129, renewalDate: dPlus(14), status: "Active", paymentMethod: "UPI", priority: "Medium Priority", notes: "Ad-free & Music" },
-      { id: generateId(), userId: user.id, name: "Canva Pro", category: "Productivity", cost: 500, billingCycle: "Monthly", monthlyCost: 500, renewalDate: dPlus(18), status: "Active", paymentMethod: "Debit Card", priority: "Essential", notes: "Design assets" },
-      { id: generateId(), userId: user.id, name: "Google One 100GB", category: "Cloud Storage", cost: 130, billingCycle: "Monthly", monthlyCost: 130, renewalDate: dPlus(22), status: "Active", paymentMethod: "Credit Card", priority: "Essential", notes: "Cloud backups" }
-    ];
-
-    saveUserSubscriptions(demo);
-    localStorage.setItem(STORAGE.budget, 2000);
-    renderDashboard();
-    showToast("Demo subscriptions loaded successfully!");
+          applyDemoUI();
+          renderDashboard();
+          showToast("Demo Mode exited — welcome back, " + (restoredUser.name || "User") + "!");
+        } else {
+          // CASE 1: Entered from login page -> redirect to clean login page
+          window.location.href = "login.html";
+        }
+      });
+    } else {
+      // ENTER DEMO MODE FROM PERSONAL ACCOUNT
+      enterDemoMode("personal-account");
+      applyDemoUI();
+      initDemoBanner();
+      renderDashboard();
+      showToast("Demo Mode enabled — sample data loaded.");
+    }
   });
 
+  // Initial render
+  applyDemoUI();
+  initDemoBanner();
   renderDashboard();
 });
 </script>
