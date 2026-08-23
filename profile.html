@@ -66,7 +66,7 @@
             </div>
             <p class="profile-name" id="profileName">—</p>
             <p class="profile-email" id="profileEmail">—</p>
-            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;" id="removePhotoBtn">Remove Photo</button>
+            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;display:none;" id="removePhotoBtn">Remove Photo</button>
           </div>
 
           <div class="dashboard-panel" style="margin-top:16px;">
@@ -184,14 +184,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateAvatar(currentUser) {
-    const img = localStorage.getItem(STORAGE.profileImage);
-    const el = document.getElementById("avatarDisplay");
-    if (img) {
-      el.innerHTML = `<img src="${img}" alt="Profile" style="width:100%;height:100%;object-fit:cover;">`;
-    } else {
-      el.innerHTML = escapeHTML((currentUser.name || "U")[0].toUpperCase());
-    }
+  const img = localStorage.getItem(STORAGE.profileImage);
+  const el = document.getElementById("avatarDisplay");
+  const removeBtn = document.getElementById("removePhotoBtn");
+
+  if (img) {
+    el.innerHTML = `<img src="${img}" alt="Profile" style="width:100%;height:100%;object-fit:cover;">`;
+
+    // Show Remove Photo button only when photo exists
+    removeBtn.style.display = "block";
+  } else {
+    el.innerHTML = escapeHTML((currentUser.name || "U")[0].toUpperCase());
+
+    // Hide Remove Photo button when no photo exists
+    removeBtn.style.display = "none";
   }
+}
+
 
   function updateSummary() {
     const subs = getUserSubscriptions();
