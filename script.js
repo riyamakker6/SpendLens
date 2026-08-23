@@ -138,7 +138,12 @@ function requireLogin() {
 
 function logout() {
   localStorage.removeItem(STORAGE.currentUser);
+
+  localStorage.removeItem(STORAGE.theme);
+  document.documentElement.setAttribute("data-theme", "light");
+
   showToast("Logged out successfully");
+
   setTimeout(() => {
     window.location.href = "index.html";
   }, 500);
