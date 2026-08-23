@@ -2252,4 +2252,35 @@ footer {
   border: none;
 }
 
+.auth-back-btn {
+  position: fixed;
+  top: 28px;
+  left: 32px;
 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: transparent;
+  border: none;
+
+  color: #17124f;
+  font-size: 16px;
+  font-weight: 600;
+
+  cursor: pointer;
+  padding: 8px 12px;
+
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.auth-back-btn span:first-child {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.auth-back-btn:hover {
+  color: #7047ff;
+  transform: translateX(-3px);
+}
