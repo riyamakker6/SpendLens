@@ -154,6 +154,25 @@
 document.addEventListener("DOMContentLoaded", () => {
   if (!requireLogin()) return;
 
+  initDemoBanner();
+
+  if (isDemoMode()) {
+    const err = document.getElementById("addError");
+    if (err) {
+      err.style.display = "block";
+      err.style.background = "var(--primary-very-light)";
+      err.style.borderColor = "var(--border)";
+      err.style.color = "var(--primary-dark)";
+      err.innerHTML = `<strong>Demo Mode:</strong> Adding and editing subscriptions is disabled in demo mode. <a href="dashboard.html" style="color:var(--primary-dark);text-decoration:underline;margin-left:6px;">Return to Dashboard</a>`;
+    }
+    const submitBtn = document.querySelector("#subscriptionForm button[type='submit']");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = "0.5";
+      submitBtn.style.cursor = "not-allowed";
+    }
+  }
+
   const categorySelect = document.getElementById("subCategory");
   const customGroup = document.getElementById("customCategoryGroup");
   categorySelect.addEventListener("change", function() {
