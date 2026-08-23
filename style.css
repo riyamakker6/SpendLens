@@ -298,7 +298,12 @@ h6 {
   flex-shrink: 0;
 }
 .nav-logo .logo-accent {
-  color: var(--primary-dark);
+  color: #0284c7 !important;
+}
+
+.nav-logo svg {
+  color: #0284c7;
+  stroke: #0284c7;
 }
 .nav-links {
   display: flex;
