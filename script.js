@@ -14,6 +14,11 @@ const STORAGE = {
   snapshots: "Spendlens_snapshots",
   profileImage: "Spendlens_profile_image",
   recommendedPortfolio: "Spendlens_recommended_portfolio",
+  // Demo mode keys
+  demoMode: "Spendlens_demo_mode",
+  demoOrigin: "Spendlens_demo_origin", // "personal-account" | "login"
+  demoBudget: "Spendlens_demo_budget",
+  demoBannerDismissed: "Spendlens_demo_banner_dismissed",
 };
 if (typeof window !== "undefined") {
   window.STORAGE = STORAGE;
@@ -96,6 +101,17 @@ function formatDate(dateString) {
    CURRENT USER & AUTHENTICATION
 ===================================================== */
 function getCurrentUser() {
+  if (isDemoMode()) {
+    return {
+      id: DEMO_USER_ID,
+      name: "Demo User",
+      email: "demo@spendlens.app",
+    };
+  }
+  return getData(STORAGE.currentUser, null);
+}
+
+function getAuthenticatedUser() {
   return getData(STORAGE.currentUser, null);
 }
 
@@ -112,41 +128,142 @@ function saveUsers(users) {
 }
 
 function requireLogin() {
-  let user = getCurrentUser();
+  // If in Demo Mode, guest/preview access is allowed
+  if (isDemoMode()) {
+    return true;
+  }
+
+  const user = getAuthenticatedUser();
   if (!user) {
-    const users = getUsers();
-    if (users && users.length > 0) {
-      // User exists in system, set current or redirect
-      window.location.href = "login.html";
-      return false;
-    } else {
-      // First time visitor / seed default demo account
-      const defaultUser = {
-        id: "user_demo_1",
-        name: "Riya Sharma",
-        email: "riya@Spendlens.app",
-        password: "password123",
-        createdAt: new Date().toISOString(),
-      };
-      saveUsers([defaultUser]);
-      setCurrentUser(defaultUser);
-      user = defaultUser;
-    }
+    window.location.href = "login.html";
+    return false;
   }
   return true;
 }
 
 function logout() {
+  // Clear demo state and current user state
+  localStorage.removeItem(STORAGE.demoMode);
+  localStorage.removeItem(STORAGE.demoOrigin);
   localStorage.removeItem(STORAGE.currentUser);
+  sessionStorage.removeItem(STORAGE.demoBannerDismissed);
 
+  // Reset theme to default light theme after logout
   localStorage.removeItem(STORAGE.theme);
   document.documentElement.setAttribute("data-theme", "light");
 
   showToast("Logged out successfully");
 
   setTimeout(() => {
-    window.location.href = "index.html";
-  }, 500);
+    window.location.href = "login.html";
+  }, 400);
+}
+
+/* =====================================================
+   DEMO MODE MANAGEMENT
+===================================================== */
+
+/** The fixed userId used for storing demo subscriptions */
+const DEMO_USER_ID = "DEMO_USER";
+
+/** Returns true when Quick Demo mode is currently active */
+function isDemoMode() {
+  return localStorage.getItem(STORAGE.demoMode) === "true";
+}
+
+/**
+ * Seeds the demo subscription dataset (idempotent — only writes if not present).
+ * Always uses DEMO_USER_ID so it never touches the real user's data.
+ */
+function seedDemoSubscriptions() {
+  const all = getData(STORAGE.subscriptions, []);
+  const withoutDemo = all.filter((s) => s.userId !== DEMO_USER_ID);
+
+  const today = new Date();
+  const dPlus = (days) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + days);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const demoSubs = [
+    { id: "demo_sub_1", userId: DEMO_USER_ID, name: "Netflix", category: "Entertainment", cost: 649, billingCycle: "Monthly", monthlyCost: 649, renewalDate: dPlus(1), status: "Active", paymentMethod: "Credit Card", priority: "High Priority", notes: "Premium 4K plan" },
+    { id: "demo_sub_2", userId: DEMO_USER_ID, name: "Disney+ Hotstar", category: "Entertainment", cost: 299, billingCycle: "Monthly", monthlyCost: 299, renewalDate: dPlus(8), status: "Active", paymentMethod: "Credit Card", priority: "Medium Priority", notes: "Streaming overlap" },
+    { id: "demo_sub_3", userId: DEMO_USER_ID, name: "Amazon Prime", category: "Entertainment", cost: 1499, billingCycle: "Yearly", monthlyCost: 124.92, renewalDate: dPlus(25), status: "Active", paymentMethod: "UPI", priority: "High Priority", notes: "Prime video & delivery" },
+    { id: "demo_sub_4", userId: DEMO_USER_ID, name: "Spotify", category: "Music", cost: 119, billingCycle: "Monthly", monthlyCost: 119, renewalDate: dPlus(4), status: "Active", paymentMethod: "UPI", priority: "High Priority", notes: "Individual plan" },
+    { id: "demo_sub_5", userId: DEMO_USER_ID, name: "YouTube Premium", category: "Music", cost: 129, billingCycle: "Monthly", monthlyCost: 129, renewalDate: dPlus(14), status: "Active", paymentMethod: "UPI", priority: "Medium Priority", notes: "Ad-free & Music" },
+    { id: "demo_sub_6", userId: DEMO_USER_ID, name: "Canva Pro", category: "Productivity", cost: 500, billingCycle: "Monthly", monthlyCost: 500, renewalDate: dPlus(18), status: "Active", paymentMethod: "Debit Card", priority: "Essential", notes: "Design assets" },
+    { id: "demo_sub_7", userId: DEMO_USER_ID, name: "Google One 100GB", category: "Cloud Storage", cost: 130, billingCycle: "Monthly", monthlyCost: 130, renewalDate: dPlus(22), status: "Active", paymentMethod: "Credit Card", priority: "Essential", notes: "Cloud backups" },
+  ];
+
+  saveData(STORAGE.subscriptions, [...withoutDemo, ...demoSubs]);
+  localStorage.setItem(STORAGE.demoBudget, "2000");
+}
+
+/**
+ * Activates demo mode.
+ * @param {"personal-account" | "login"} [origin] - Where demo mode was launched from.
+ *   If not supplied, automatically infers from whether an authenticated user exists.
+ */
+function enterDemoMode(origin) {
+  seedDemoSubscriptions();
+  localStorage.setItem(STORAGE.demoMode, "true");
+
+  if (!origin) {
+    const realUser = getAuthenticatedUser();
+    origin = realUser ? "personal-account" : "login";
+  }
+  localStorage.setItem(STORAGE.demoOrigin, origin);
+  sessionStorage.removeItem(STORAGE.demoBannerDismissed);
+}
+
+/**
+ * Deactivates demo mode.
+ * - If launched from an authenticated personal account: restores the personal session without logging out.
+ * - If launched from the login page: clears the session and returns to a clean login page.
+ * @param {Function | boolean} [onExitOrRedirect=true] - Callback function receiving restoredUser (or null), or boolean to auto-redirect/reload.
+ */
+function exitDemoMode(onExitOrRedirect = true) {
+  const origin = localStorage.getItem(STORAGE.demoOrigin) || "login";
+  const realUser = getAuthenticatedUser();
+
+  localStorage.removeItem(STORAGE.demoMode);
+  localStorage.removeItem(STORAGE.demoOrigin);
+  sessionStorage.removeItem(STORAGE.demoBannerDismissed);
+
+  if (origin === "personal-account" && realUser) {
+    // CASE 2: User was already logged in to their personal account.
+    // Preserve their real authenticated session!
+    if (typeof onExitOrRedirect === "function") {
+      onExitOrRedirect(realUser);
+    } else if (onExitOrRedirect) {
+      const currentPage = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
+      if (currentPage === "login.html" || currentPage === "") {
+        window.location.href = "dashboard.html";
+      } else {
+        window.location.reload();
+      }
+    }
+  } else {
+    // CASE 1: User entered demo from login page without an authenticated account.
+    // Clear any user session and return to a clean login page.
+    localStorage.removeItem(STORAGE.currentUser);
+    if (typeof onExitOrRedirect === "function") {
+      onExitOrRedirect(null);
+    } else if (onExitOrRedirect) {
+      window.location.href = "login.html";
+    }
+  }
+}
+
+/** Returns demo subscriptions (DEMO_USER_ID entries from storage) */
+function getDemoSubscriptions() {
+  return getData(STORAGE.subscriptions, []).filter(
+    (s) => s.userId === DEMO_USER_ID
+  );
 }
 
 /* =====================================================
@@ -156,8 +273,17 @@ function getAllSubscriptions() {
   return getData(STORAGE.subscriptions, []);
 }
 
+/**
+ * Returns subscriptions for the current context:
+ * — Demo mode → returns demo subscriptions (DEMO_USER_ID)
+ * — Normal mode → returns the real logged-in user's subscriptions
+ */
 function getUserSubscriptions() {
-  const user = getCurrentUser();
+  if (isDemoMode()) {
+    return getDemoSubscriptions();
+  }
+
+  const user = getAuthenticatedUser();
   if (!user) {
     return [];
   }
@@ -165,13 +291,22 @@ function getUserSubscriptions() {
   return all.filter((subscription) => subscription.userId === user.id);
 }
 
+/**
+ * Saves subscriptions for the current user.
+ * In demo mode this is a no-op — demo data is never written back via this path.
+ */
 function saveUserSubscriptions(userSubscriptions) {
-  const user = getCurrentUser();
+  // DEMO MODE GUARD — never modify real user data while in demo mode
+  if (isDemoMode()) {
+    return;
+  }
+
+  const user = getAuthenticatedUser();
   if (!user) return;
 
   const all = getAllSubscriptions();
   const otherUsers = all.filter(
-    (subscription) => subscription.userId !== user.id,
+    (subscription) => subscription.userId !== user.id
   );
 
   // Normalize monthly costs before saving
@@ -266,7 +401,6 @@ function detectOverlaps() {
       const totalMonthly = costs.reduce((sum, c) => sum + c, 0);
 
       // Potential savings: if user keeps only the primary (most expensive or essential) service, they save the rest
-      // Conservatively, potential savings = total - max cost in the category
       const maxCost = Math.max(...costs);
       const minCost = Math.min(...costs);
       const secondarySavingsMonthly = totalMonthly - maxCost;
@@ -370,7 +504,6 @@ function initializeTheme() {
   const themeButton = document.getElementById("themeToggle");
   if (themeButton) {
     themeButton.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-    // Remove old listeners by replacing with clone or single attachment
     themeButton.onclick = toggleTheme;
   }
 }
@@ -426,7 +559,7 @@ function initializeNavbar() {
   }
 
   const authButton = document.getElementById("authBtn");
-  const user = getCurrentUser();
+  const user = getAuthenticatedUser();
   if (authButton && user) {
     authButton.textContent = "Dashboard";
     authButton.href = "dashboard.html";
@@ -435,7 +568,7 @@ function initializeNavbar() {
 
 /* =====================================================
    HOME PAGE STATISTICS
-===================================================== */
+==================================================== */
 function renderHomeStatistics() {
   const subscriptions = getAllSubscriptions();
   const users = getUsers();
@@ -477,6 +610,56 @@ function renderHomeStatistics() {
     savingsElement.textContent = money(
       potentialSavings > 0 ? potentialSavings : 7188,
     );
+  }
+}
+
+/* =====================================================
+   DEMO MODE BANNER & UI — shared across all app pages
+===================================================== */
+
+/**
+ * Injects dismissible info banner and sidebar "Demo Account" badge
+ * when Demo Mode is active.
+ */
+function initDemoBanner() {
+  if (!isDemoMode()) return;
+
+  // --- 1. Dismissible info banner with Exit Demo button ---
+  const dismissed = sessionStorage.getItem(STORAGE.demoBannerDismissed);
+  if (!dismissed && !document.getElementById("demoBanner")) {
+    const main = document.querySelector(".main-content") || document.querySelector("main");
+    if (main) {
+      const banner = document.createElement("div");
+      banner.id = "demoBanner";
+      banner.className = "demo-banner";
+      banner.innerHTML = `
+        <span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <strong>Demo Mode active</strong> — you are viewing sample data.
+        </span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm btn-demo-active" style="padding:3px 10px;font-size:0.75rem;border-radius:999px;cursor:pointer;" onclick="exitDemoMode(true)">Exit Demo</button>
+          <button class="demo-banner-close" aria-label="Dismiss banner" onclick="(function(el){sessionStorage.setItem('${STORAGE.demoBannerDismissed}','1');el.closest('.demo-banner').style.display='none';})(this)">×</button>
+        </div>
+      `;
+      main.insertBefore(banner, main.firstChild);
+    }
+  }
+
+  // --- 2. Sidebar "Demo Account" label ---
+  const sidebarBottom = document.querySelector(".sidebar-bottom");
+  if (sidebarBottom && !document.getElementById("sidebarDemoLabel")) {
+    const label = document.createElement("div");
+    label.id = "sidebarDemoLabel";
+    label.className = "sidebar-demo-label";
+    label.style.cursor = "pointer";
+    label.title = "Click to Exit Demo";
+    label.onclick = () => exitDemoMode(true);
+    label.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>
+      Demo Mode &bull; Exit &rarr;
+    `;
+    sidebarBottom.appendChild(label);
   }
 }
 
