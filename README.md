@@ -4,7 +4,7 @@
 
 SpendLens is a web app that helps users track their subscriptions and understand where their money is going each month.
 
-The idea is simple: people often have multiple subscriptions and don't realize how much they spend on them altogether. SpendLens puts everything in one place and helps users identify overlapping services, unnecessary expenses, and ways to stay within their budget.
+The idea is simple: people often have multiple subscriptions and don't realize how much they spend on them altogether. SpendLens puts everything in one place and helps users identify overlapping services, unnecessary expenses, and ways to stay within their budget.It also gives users a quick and simple way to see their spending patterns and make smarter financial decisions.
 
 ---
 
