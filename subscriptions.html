@@ -56,7 +56,8 @@
           <p>Search, filter and manage your recurring payments.</p>
         </div>
         <div class="quick-actions">
-          <a href="add-subscription.html" class="btn btn-primary">
+          <!-- Hidden in demo mode via JS -->
+          <a href="add-subscription.html" class="btn btn-primary" id="addSubBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Subscription
           </a>
@@ -99,7 +100,7 @@
               <th>Billing Cycle</th>
               <th>Next Renewal</th>
               <th>Status</th>
-              <th>Actions</th>
+              <th id="actionsHeader">Actions</th>
             </tr>
           </thead>
           <tbody id="subscriptionTableBody"></tbody>
@@ -113,9 +114,21 @@
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
 <script>
-  // java script
 document.addEventListener("DOMContentLoaded", () => {
   if (!requireLogin()) return;
+
+  const demo = isDemoMode();
+
+  // Apply demo mode UI adjustments
+  const addSubBtn = document.getElementById("addSubBtn");
+  const actionsHeader = document.getElementById("actionsHeader");
+  if (demo) {
+    if (addSubBtn) addSubBtn.style.display = "none";
+    if (actionsHeader) actionsHeader.style.display = "none";
+  }
+
+  // Inject demo banner + sidebar label
+  initDemoBanner();
 
   function renderTable() {
     const subs = getUserSubscriptions();
@@ -150,11 +163,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!filtered.length) {
       tbody.innerHTML = "";
+      const addLink = !demo
+        ? `<a href="add-subscription.html" class="btn btn-primary" style="margin-top:8px;">Add Subscription</a>`
+        : "";
       empty.innerHTML = `<div class="empty-state">
         <div class="empty-icon">📋</div>
         <h3>No subscriptions found</h3>
-        <p>Try adjusting your filters or add a new subscription to start tracking.</p>
-        <a href="add-subscription.html" class="btn btn-primary" style="margin-top:8px;">Add Subscription</a>
+        <p>Try adjusting your filters${!demo ? " or add a new subscription to start tracking" : ""}.</p>
+        ${addLink}
       </div>`;
     } else {
       empty.innerHTML = "";
@@ -163,6 +179,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const initial = (s.name || "S")[0].toUpperCase();
         const status = s.status || "Active";
         const cycleInfo = s.billingCycle === "Yearly" ? ` (₹${s.cost}/yr)` : s.billingCycle === "Weekly" ? ` (₹${s.cost}/wk)` : "";
+
+        // In demo mode: no action buttons shown
+        const actionCell = demo
+          ? `<td style="color:var(--muted);font-size:0.78rem;font-style:italic;">View only</td>`
+          : `<td class="table-actions">
+               <a href="add-subscription.html?id=${encodeURIComponent(s.id)}" class="btn btn-secondary btn-sm">Edit</a>
+               <button class="btn btn-danger btn-sm" onclick="deleteSub('${escapeHTML(s.id)}')">Delete</button>
+             </td>`;
 
         return `<tr>
           <td>
@@ -181,16 +205,14 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${escapeHTML(s.billingCycle || "Monthly")}<span style="font-size:0.75rem;color:var(--muted);">${cycleInfo}</span></td>
           <td>${s.renewalDate ? formatDate(s.renewalDate) : "—"}</td>
           <td><span class="status ${status.toLowerCase()}">${escapeHTML(status)}</span></td>
-          <td class="table-actions">
-            <a href="add-subscription.html?id=${encodeURIComponent(s.id)}" class="btn btn-secondary btn-sm">Edit</a>
-            <button class="btn btn-danger btn-sm" onclick="deleteSub('${escapeHTML(s.id)}')">Delete</button>
-          </td>
+          ${actionCell}
         </tr>`;
       }).join("");
     }
   }
 
   window.deleteSub = function(id) {
+    if (isDemoMode()) return; // Guard: no deletion in demo mode
     if (!confirm("Are you sure you want to delete this subscription?")) return;
     const subs = getUserSubscriptions().filter(s => s.id !== id);
     saveUserSubscriptions(subs);
