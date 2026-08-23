@@ -218,41 +218,27 @@ function generateRecommendedPortfolio(subscriptions, budget) {
     return { portfolio: [...active], review: [], essentialConflict, essentialCost };
   }
 
-  let candidates = [...active].sort((a, b) => calculateSubscriptionScore(b) - calculateSubscriptionScore(a));
-  if (candidates.length > 20) candidates = candidates.slice(0, 20);
+  // Sort candidates by: 1) priority score DESC (higher priority first),
+  // 2) cost ASC (cheaper first when priority is equal — cheaper wins tie).
+  // This ensures: Essential > High > Medium > Low > Optional,
+  // and within the same priority the cheaper subscription is preferred.
+  const sorted = [...active].sort((a, b) => {
+    const pDiff = priorityScore(b) - priorityScore(a);
+    if (pDiff !== 0) return pDiff;
+    const costA = Number(a.monthlyCost) || calculateMonthlyCost(a.cost, a.billingCycle);
+    const costB = Number(b.monthlyCost) || calculateMonthlyCost(b.cost, b.billingCycle);
+    return costA - costB; // cheaper first within same priority
+  });
 
-  let bestPortfolio = [];
-  let bestScore = -Infinity;
-
-  function search(index, current, total) {
-    if (total > budget) return;
-    if (index === candidates.length) {
-      if (!current.length) return;
-      const score = calculatePortfolioScore(current, budget);
-      if (score > bestScore) {
-        bestScore = score;
-        bestPortfolio = [...current];
-      }
-      return;
-    }
-    const cost = Number(candidates[index].monthlyCost) || calculateMonthlyCost(candidates[index].cost, candidates[index].billingCycle);
-    search(index + 1, [...current, candidates[index]], total + cost);
-    search(index + 1, current, total);
-  }
-
-  search(0, [], 0);
-
-  if (!essentialConflict && essential.length) {
-    const essentialIds = new Set(essential.map(s => s.id));
-    const hasAllEssential = essential.every(s => bestPortfolio.some(x => x.id === s.id));
-    if (!hasAllEssential) {
-      const remaining = active.filter(s => !essentialIds.has(s.id));
-      const remainingBudget = budget - essentialCost;
-      let additional = [];
-      if (remainingBudget > 0) {
-        additional = optimizeAdditional(remaining, remainingBudget);
-      }
-      bestPortfolio = [...essential, ...additional];
+  // Greedy pass: walk through the sorted list and include each subscription
+  // as long as it fits within the remaining budget.
+  const bestPortfolio = [];
+  let remaining = budget;
+  for (const sub of sorted) {
+    const cost = Number(sub.monthlyCost) || calculateMonthlyCost(sub.cost, sub.billingCycle);
+    if (cost <= remaining) {
+      bestPortfolio.push(sub);
+      remaining -= cost;
     }
   }
 
@@ -263,26 +249,24 @@ function generateRecommendedPortfolio(subscriptions, budget) {
 }
 
 function optimizeAdditional(subscriptions, budget) {
-  let best = [];
-  let bestScore = -Infinity;
-
-  function search(index, current, total) {
-    if (total > budget) return;
-    if (index === subscriptions.length) {
-      const score = calculatePortfolioScore(current, budget);
-      if (score > bestScore) {
-        bestScore = score;
-        best = [...current];
-      }
-      return;
+  // Sort by priority DESC then cost ASC (cheaper wins tie), greedy fill.
+  const sorted = [...subscriptions].sort((a, b) => {
+    const pDiff = priorityScore(b) - priorityScore(a);
+    if (pDiff !== 0) return pDiff;
+    const costA = Number(a.monthlyCost) || calculateMonthlyCost(a.cost, a.billingCycle);
+    const costB = Number(b.monthlyCost) || calculateMonthlyCost(b.cost, b.billingCycle);
+    return costA - costB;
+  });
+  const result = [];
+  let remaining = budget;
+  for (const sub of sorted) {
+    const cost = Number(sub.monthlyCost) || calculateMonthlyCost(sub.cost, sub.billingCycle);
+    if (cost <= remaining) {
+      result.push(sub);
+      remaining -= cost;
     }
-    const cost = Number(subscriptions[index].monthlyCost) || calculateMonthlyCost(subscriptions[index].cost, subscriptions[index].billingCycle);
-    search(index + 1, [...current, subscriptions[index]], total + cost);
-    search(index + 1, current, total);
   }
-
-  search(0, [], 0);
-  return best;
+  return result;
 }
 
 function subscriptionReason(sub, portfolio) {
@@ -655,6 +639,9 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Generated optimal plan!");
     });
   }
+
+  // Show demo banner and sidebar label if in demo mode
+  initDemoBanner();
 
   renderOverlapSection();
   renderOptimizer();
