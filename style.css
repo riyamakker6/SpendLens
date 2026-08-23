@@ -1,5 +1,5 @@
 /* =====================================================
-   Spendlens —
+   Spendlens — ARCTIC DESIGN SYSTEM v2.0
 ===================================================== */
 
 /* 1. CSS VARIABLES */
@@ -45,6 +45,10 @@
 
 /* DARK THEME */
 [data-theme="dark"] {
+  --primary: #38bdf8;
+  --primary-dark: #7dd3fc;
+  --primary-light: rgba(56, 189, 248, 0.18);
+  --primary-very-light: rgba(56, 189, 248, 0.08);
   --background: #0b1120;
   --surface: #111827;
   --surface-2: #1f2937;
@@ -298,12 +302,12 @@ h6 {
   flex-shrink: 0;
 }
 .nav-logo .logo-accent {
-  color: #0284c7 !important;
+  color: var(--primary-dark);
 }
 
 .nav-logo svg {
-  color: #0284c7;
-  stroke: #0284c7;
+  color: var(--primary-dark);
+  stroke: var(--primary-dark);
 }
 .nav-links {
   display: flex;
@@ -1640,12 +1644,13 @@ footer {
 
 /* 24. AUTH */
 .auth-page {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--background);
-  padding: 24px;
+  padding: 80px 24px 40px;
   position: relative;
   overflow: hidden;
 }
@@ -1664,34 +1669,57 @@ footer {
   pointer-events: none;
 }
 .auth-card {
+  width: 100%;
+  max-width: 560px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: 40px 32px;
+  padding: 40px 44px;
   box-shadow: var(--shadow-lg);
-  width: 100%;
-  max-width: 440px;
   position: relative;
   z-index: 1;
+  margin: 0 auto;
 }
+
 .auth-logo {
-  text-align: center;
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
 }
+
 .auth-logo-text {
   font-size: 1.5rem;
   font-weight: 900;
-  color: var(--text);
+  color: var(--primary-dark);
   letter-spacing: -0.04em;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
+
+.auth-logo-text svg {
+  color: var(--primary-dark);
+  stroke: var(--primary-dark);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.auth-logo-text .logo-accent,
 .auth-logo-text .accent {
   color: var(--primary-dark);
 }
+.auth-logo-text:hover {
+  color: var(--primary);
+  transform: scale(1.02);
+}
+.auth-logo-text:hover svg {
+  color: var(--primary);
+  stroke: var(--primary);
+}
 .auth-title {
-  font-size: 1.6rem;
+  font-size: 1.7rem;
   font-weight: 800;
   text-align: center;
   margin-bottom: 8px;
@@ -1699,8 +1727,8 @@ footer {
 .auth-subtitle {
   text-align: center;
   color: var(--muted);
-  font-size: 0.92rem;
-  margin-bottom: 28px;
+  font-size: 0.95rem;
+  margin-bottom: 32px;
 }
 .auth-footer-text {
   text-align: center;
@@ -2252,35 +2280,163 @@ footer {
   border: none;
 }
 
+/* =====================================================
+   DEMO MODE STYLES (100% Theme-Aware)
+===================================================== */
+
+/* "DEMO MODE" pill badge shown next to the greeting */
+.demo-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  vertical-align: middle;
+  margin-left: 10px;
+  animation: demoBadgePop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes demoBadgePop {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Exit Demo button — active/selected state */
+.btn-demo-active {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  border: 1.5px solid var(--primary) !important;
+  font-weight: 700 !important;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.15s;
+}
+.btn-demo-active:hover {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border-color: var(--primary-dark) !important;
+  transform: translateY(-1px);
+}
+.btn-demo-active:active {
+  transform: translateY(0);
+}
+
+/* Slim dismissible demo info banner */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--primary-very-light);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 10px 16px;
+  margin: 0 0 20px 0;
+  animation: slideDown 0.3s ease both;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.demo-banner strong {
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.demo-banner-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.demo-banner-close:hover {
+  opacity: 1;
+  color: var(--text);
+}
+
+/* Sidebar "Demo Account" label */
+.sidebar-demo-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--primary-very-light);
+  color: var(--primary-dark);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  margin-top: 10px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.sidebar-demo-label:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+/* Back button on authentication pages */
 .auth-back-btn {
   position: fixed;
-  top: 28px;
-  left: 32px;
-
+  top: 24px;
+  left: 24px;
   display: flex;
   align-items: center;
   gap: 8px;
-
   background: transparent;
   border: none;
-
-  color: #17124f;
+  color: var(--text);
   font-size: 16px;
   font-weight: 600;
-
   cursor: pointer;
   padding: 8px 12px;
-
+  border-radius: var(--radius-sm);
   transition: all 0.2s ease;
   z-index: 1000;
 }
 
 .auth-back-btn span:first-child {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
+  transition: transform 0.2s ease;
 }
 
 .auth-back-btn:hover {
-  color: #7047ff;
+  color: var(--primary-dark);
+  background: var(--primary-very-light);
   transform: translateX(-3px);
+}
+
+@media (max-width: 600px) {
+  .auth-page {
+    padding: 80px 16px 24px;
+  }
+
+  .auth-card {
+    max-width: 100%;
+    padding: 32px 24px;
+    border-radius: 16px;
+  }
+
+  .auth-back-btn {
+    top: 16px;
+    left: 12px;
+  }
 }
