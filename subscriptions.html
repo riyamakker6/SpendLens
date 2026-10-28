@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const status = s.status || "Active";
         const cycleInfo = s.billingCycle === "Yearly" ? ` (₹${s.cost}/yr)` : s.billingCycle === "Weekly" ? ` (₹${s.cost}/wk)` : "";
 
-        // In demo mode: no action buttons shown
+        
         const actionCell = demo
           ? `<td style="color:var(--muted);font-size:0.78rem;font-style:italic;">View only</td>`
           : `<td class="table-actions">
