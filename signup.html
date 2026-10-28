@@ -13,7 +13,6 @@
 
 <body>
 
-  <!-- Back Button -->
   <button type="button" class="auth-back-btn" onclick="goBack()">
     <span>←</span>
     <span>Back</span>
@@ -81,43 +80,17 @@
 
   <script>
 
-    /* =========================================
-       BACK BUTTON
-       ========================================= */
-
     function goBack() {
 
-      /*
-       * If the user came from another page,
-       * go back to that page.
-       *
-       * Examples:
-       *
-       * features.html → signup.html → Back
-       *                    ↓
-       *                features.html
-       *
-       * login.html → signup.html → Back
-       *                 ↓
-       *             login.html
-       *
-       * index.html → signup.html → Back
-       *                 ↓
-       *             index.html
-       */
 
       if (window.history.length > 1) {
         window.history.back();
       } else {
-        // Fallback if there is no previous page
         window.location.href = "index.html";
       }
     }
 
 
-    /* =========================================
-       SIGN UP FORM
-       ========================================= */
 
 
     document.getElementById("signupForm").addEventListener("submit", async function (e) {
@@ -151,8 +124,6 @@
           return;
         }
 
-        // Keep only the logged-in user's details in browser storage.
-        // The account and password hash are stored in MongoDB.
         localStorage.removeItem(STORAGE.demoMode);
         localStorage.removeItem(STORAGE.demoOrigin);
         setCurrentUser(data);
