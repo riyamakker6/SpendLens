@@ -1,5 +1,4 @@
-https://spendlenns.netlify.app/
-
+https://spendlens-server.onrender.com
 
 # SpendLens 💸
 
