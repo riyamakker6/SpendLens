@@ -1,4 +1,3 @@
-// models/Subscription.js
 const mongoose = require('mongoose');
 
 const subscriptionSchema = new mongoose.Schema({
@@ -8,7 +7,7 @@ const subscriptionSchema = new mongoose.Schema({
   cost: { type: Number },
   billingCycle: { type: String, enum: ['Weekly', 'Monthly', 'Quarterly', 'Yearly', 'Annual'], default: 'Monthly' },
   monthlyCost: { type: Number },
-  renewalDate: { type: String }, // store as YYYY-MM-DD string
+  renewalDate: { type: String }, 
   status: { type: String, default: 'Active' },
   paymentMethod: { type: String },
   priority: { type: String },
