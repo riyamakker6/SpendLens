@@ -1,10 +1,8 @@
-// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 
-// Signup
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -25,7 +23,6 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -56,7 +53,6 @@ req.session.save((err) => {
   }
 });
 
-// Logout
 router.post('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).json({ message: 'Logout failed' });
@@ -72,7 +68,6 @@ res.clearCookie('spendlens.sid', {
   });
 });
 
-// Get current user
 router.get('/me', async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ message: 'Not authenticated' });
