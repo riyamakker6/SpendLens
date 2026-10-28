@@ -3,8 +3,6 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Subscription = require('../models/Subscription');
 
-// GET /api/reminders/renewals
-// Returns active subscriptions renewing within the next 30 days
 router.get('/renewals', auth, async (req, res) => {
   try {
     const today = new Date();
