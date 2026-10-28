@@ -218,16 +218,12 @@ function generateRecommendedPortfolio(subscriptions, budget) {
     return { portfolio: [...active], review: [], essentialConflict, essentialCost };
   }
 
-  // Sort candidates by: 1) priority score DESC (higher priority first),
-  // 2) cost ASC (cheaper first when priority is equal — cheaper wins tie).
-  // This ensures: Essential > High > Medium > Low > Optional,
-  // and within the same priority the cheaper subscription is preferred.
   const sorted = [...active].sort((a, b) => {
     const pDiff = priorityScore(b) - priorityScore(a);
     if (pDiff !== 0) return pDiff;
     const costA = Number(a.monthlyCost) || calculateMonthlyCost(a.cost, a.billingCycle);
     const costB = Number(b.monthlyCost) || calculateMonthlyCost(b.cost, b.billingCycle);
-    return costA - costB; // cheaper first within same priority
+    return costA - costB; 
   });
 
 
@@ -644,7 +640,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Show demo banner and sidebar label if in demo mode
   initDemoBanner();
 
   renderOverlapSection();
