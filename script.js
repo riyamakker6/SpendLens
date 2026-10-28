@@ -1,10 +1,3 @@
-/* =====================================================
-   Spendlens - MAIN JAVASCRIPT & SHARED CORE ENGINE
-===================================================== */
-
-/* =====================================================
-   LOCAL STORAGE KEYS
-===================================================== */
 const STORAGE = {
   users: "Spendlens_users",
   currentUser: "Spendlens_current_user",
@@ -14,9 +7,8 @@ const STORAGE = {
   snapshots: "Spendlens_snapshots",
   profileImage: "Spendlens_profile_image",
   recommendedPortfolio: "Spendlens_recommended_portfolio",
-  // Demo mode keys
   demoMode: "Spendlens_demo_mode",
-  demoOrigin: "Spendlens_demo_origin", // "personal-account" | "login"
+  demoOrigin: "Spendlens_demo_origin",
   demoBudget: "Spendlens_demo_budget",
   demoBannerDismissed: "Spendlens_demo_banner_dismissed",
 };
@@ -27,9 +19,6 @@ if (typeof global !== "undefined") {
   global.STORAGE = STORAGE;
 }
 
-/* =====================================================
-   BASIC HELPERS & UTILITIES
-===================================================== */
 
 
 function getData(key, defaultValue) {
@@ -99,9 +88,6 @@ function formatDate(dateString) {
   }
 }
 
-/* =====================================================
-   CURRENT USER & AUTHENTICATION
-===================================================== */
 function getCurrentUser() {
   if (isDemoMode()) {
     return {
@@ -130,7 +116,6 @@ function saveUsers(users) {
 }
 
 function requireLogin() {
-  // If in Demo Mode, guest/preview access is allowed
   if (isDemoMode()) {
     return true;
   }
@@ -145,13 +130,11 @@ function requireLogin() {
 }
 
 function logout() {
-  // Clear demo state and current user state
   localStorage.removeItem(STORAGE.demoMode);
   localStorage.removeItem(STORAGE.demoOrigin);
   localStorage.removeItem(STORAGE.currentUser);
   sessionStorage.removeItem(STORAGE.demoBannerDismissed);
 
-  // Reset theme to default light theme after logout
   localStorage.removeItem(STORAGE.theme);
   document.documentElement.setAttribute("data-theme", "light");
 
@@ -162,22 +145,13 @@ function logout() {
   }, 350);
 }
 
-/* =====================================================
-   DEMO MODE MANAGEMENT
-===================================================== */
 
-/** The fixed userId used for storing demo subscriptions */
 const DEMO_USER_ID = "DEMO_USER";
 
-/** Returns true when Quick Demo mode is currently active */
 function isDemoMode() {
   return localStorage.getItem(STORAGE.demoMode) === "true";
 }
 
-/**
- * Seeds the demo subscription dataset (idempotent — only writes if not present).
- * Always uses DEMO_USER_ID so it never touches the real user's data.
- */
 function seedDemoSubscriptions() {
   const all = getData(STORAGE.subscriptions, []);
   const withoutDemo = all.filter((s) => s.userId !== DEMO_USER_ID);
@@ -206,11 +180,7 @@ function seedDemoSubscriptions() {
   localStorage.setItem(STORAGE.demoBudget, "2000");
 }
 
-/**
- * Activates demo mode.
- * @param {"personal-account" | "login"} [origin] - Where demo mode was launched from.
- *   If not supplied, automatically infers from whether an authenticated user exists.
- */
+
 function enterDemoMode(origin) {
   seedDemoSubscriptions();
   localStorage.setItem(STORAGE.demoMode, "true");
@@ -223,12 +193,6 @@ function enterDemoMode(origin) {
   sessionStorage.removeItem(STORAGE.demoBannerDismissed);
 }
 
-/**
- * Deactivates demo mode.
- * - If launched from an authenticated personal account: restores the personal session without logging out.
- * - If launched from the login page: clears the session and returns to a clean login page.
- * @param {Function | boolean} [onExitOrRedirect=true] - Callback function receiving restoredUser (or null), or boolean to auto-redirect/reload.
- */
 function exitDemoMode(onExitOrRedirect = true) {
   const origin = localStorage.getItem(STORAGE.demoOrigin) || "login";
   const realUser = getAuthenticatedUser();
@@ -238,8 +202,7 @@ function exitDemoMode(onExitOrRedirect = true) {
   sessionStorage.removeItem(STORAGE.demoBannerDismissed);
 
   if (origin === "personal-account" && realUser) {
-    // CASE 2: User was already logged in to their personal account.
-    // Preserve their real authenticated session!
+
     if (typeof onExitOrRedirect === "function") {
       onExitOrRedirect(realUser);
     } else if (onExitOrRedirect) {
@@ -251,8 +214,7 @@ function exitDemoMode(onExitOrRedirect = true) {
       }
     }
   } else {
-    // CASE 1: User entered demo from login page without an authenticated account.
-    // Clear any user session and return to a clean login page.
+
     localStorage.removeItem(STORAGE.currentUser);
     if (typeof onExitOrRedirect === "function") {
       onExitOrRedirect(null);
@@ -262,23 +224,15 @@ function exitDemoMode(onExitOrRedirect = true) {
   }
 }
 
-/** Returns demo subscriptions (DEMO_USER_ID entries from storage) */
 function getDemoSubscriptions() {
   return getData(STORAGE.subscriptions, []).filter(
     (s) => s.userId === DEMO_USER_ID
   );
 }
 
-/* =====================================================
-   SUBSCRIPTION DATA (MONGODB API + LOCAL CACHE)
-===================================================== */
 
 const SPENDLENS_API_BASE_URL = "https://spendlens-server.onrender.com/api";
 
-/**
- * Make requests to the backend.
- * Include session cookies so the backend knows which user is logged in.
- */
 async function subscriptionApiRequest(path, options = {}) {
   const response = await fetch(`${SPENDLENS_API_BASE_URL}${path}`, {
     ...options,
@@ -300,18 +254,10 @@ async function subscriptionApiRequest(path, options = {}) {
   return data;
 }
 
-/**
- * Read cached subscriptions.
- * Existing dashboard and analytics calculations use this function.
- */
 function getAllSubscriptions() {
   return getData(STORAGE.subscriptions, []);
 }
 
-/**
- * Get the current user's cached subscriptions.
- * Demo mode remains separate from personal account data.
- */
 function getUserSubscriptions() {
   if (isDemoMode()) {
     return getDemoSubscriptions();
@@ -325,10 +271,6 @@ function getUserSubscriptions() {
   );
 }
 
-/**
- * Fetch subscriptions from MongoDB and refresh the local cache.
- * Call this with await before rendering subscription-dependent pages.
- */
 async function loadUserSubscriptionsFromAPI() {
   if (isDemoMode()) {
     return getDemoSubscriptions();
@@ -361,8 +303,6 @@ async function loadUserSubscriptionsFromAPI() {
     };
   });
 
-  // Replace only this user's cached subscriptions.
-  // Keep any other user's cache and demo sample records untouched.
   const allSubscriptions = getAllSubscriptions();
 
   const otherSubscriptions = allSubscriptions.filter(
@@ -380,9 +320,6 @@ async function loadUserSubscriptionsFromAPI() {
   return subscriptions;
 }
 
-/**
- * Create a subscription in MongoDB.
- */
 async function createSubscriptionInAPI(subscription) {
   const data = await subscriptionApiRequest("/subscriptions", {
     method: "POST",
@@ -392,9 +329,6 @@ async function createSubscriptionInAPI(subscription) {
   return data;
 }
 
-/**
- * Update a subscription in MongoDB.
- */
 async function updateSubscriptionInAPI(id, subscription) {
   return subscriptionApiRequest(
     `/subscriptions/${encodeURIComponent(id)}`,
@@ -405,9 +339,6 @@ async function updateSubscriptionInAPI(id, subscription) {
   );
 }
 
-/**
- * Delete a subscription from MongoDB.
- */
 async function deleteSubscriptionFromAPI(id) {
   return subscriptionApiRequest(
     `/subscriptions/${encodeURIComponent(id)}`,
@@ -417,10 +348,6 @@ async function deleteSubscriptionFromAPI(id) {
   );
 }
 
-/**
- * Update the local cache only.
- * This function does NOT write to MongoDB.
- */
 function saveUserSubscriptions(userSubscriptions) {
   if (isDemoMode()) return;
 
@@ -456,9 +383,7 @@ function saveUserSubscriptions(userSubscriptions) {
     ...normalizedSubscriptions,
   ]);
 }
-/* =====================================================
-   COST CALCULATIONS
-===================================================== */
+
 function calculateMonthlyCost(cost, billingCycle) {
   cost = Number(cost) || 0;
   const cycle = String(billingCycle || "Monthly").toLowerCase();
@@ -502,9 +427,6 @@ function getYearlyTotal() {
   return getMonthlyTotal() * 12;
 }
 
-/* =====================================================
-   CATEGORY GROUPING & OVERLAP DETECTION
-===================================================== */
 function groupByCategory() {
   const grouped = {};
   getActiveSubscriptions().forEach((subscription) => {
@@ -560,16 +482,12 @@ function calculatePotentialSavings() {
   return savings;
 }
 
-/* =====================================================
-   COST LEAK DETECTOR DIAGNOSTICS
-===================================================== */
 function detectCostLeaks() {
   const active = getActiveSubscriptions();
   const overlaps = detectOverlaps();
   const duplicateNames = [];
   const highCostOptional = [];
 
-  // Check duplicate services by normalized name
   const nameMap = {};
   active.forEach((sub) => {
     const norm = (sub.name || "").trim().toLowerCase();
@@ -586,7 +504,6 @@ function detectCostLeaks() {
     }
   });
 
-  // Check high cost optional or low priority services
   active.forEach((sub) => {
     if (
       (sub.priority === "Optional" || sub.priority === "Low Priority") &&
@@ -605,9 +522,6 @@ function detectCostLeaks() {
   };
 }
 
-/* =====================================================
-   TOAST NOTIFICATION
-===================================================== */
 function showToast(message) {
   let toast = document.getElementById("toast");
   if (!toast) {
@@ -623,9 +537,6 @@ function showToast(message) {
   }, 2500);
 }
 
-/* =====================================================
-   THEME MANAGEMENT
-===================================================== */
 function initializeTheme() {
   const savedTheme = localStorage.getItem(STORAGE.theme) || "light";
   document.documentElement.setAttribute("data-theme", savedTheme);
@@ -650,9 +561,6 @@ function toggleTheme() {
   }
 }
 
-/* =====================================================
-   SIDEBAR & NAVBAR INITIALIZATION
-===================================================== */
 function initializeSidebar() {
   const menuBtn = document.getElementById("menuBtn");
   const sidebar = document.getElementById("sidebar");
@@ -663,7 +571,6 @@ function initializeSidebar() {
       sidebar.classList.toggle("open");
     });
 
-    // Close sidebar on click outside (mobile)
     document.addEventListener("click", (e) => {
       if (
         window.innerWidth <= 900 &&
@@ -695,9 +602,6 @@ function initializeNavbar() {
   }
 }
 
-/* =====================================================
-   HOME PAGE STATISTICS
-==================================================== */
 function renderHomeStatistics() {
   const subscriptions = getAllSubscriptions();
   const users = getUsers();
@@ -742,18 +646,9 @@ function renderHomeStatistics() {
   }
 }
 
-/* =====================================================
-   DEMO MODE BANNER & UI — shared across all app pages
-===================================================== */
-
-/**
- * Injects dismissible info banner and sidebar "Demo Account" badge
- * when Demo Mode is active.
- */
 function initDemoBanner() {
   if (!isDemoMode()) return;
 
-  // --- 1. Dismissible info banner with Exit Demo button ---
   const dismissed = sessionStorage.getItem(STORAGE.demoBannerDismissed);
   if (!dismissed && !document.getElementById("demoBanner")) {
     const main = document.querySelector(".main-content") || document.querySelector("main");
@@ -775,7 +670,6 @@ function initDemoBanner() {
     }
   }
 
-  // --- 2. Sidebar "Demo Account" label ---
   const sidebarBottom = document.querySelector(".sidebar-bottom");
   if (sidebarBottom && !document.getElementById("sidebarDemoLabel")) {
     const label = document.createElement("div");
@@ -792,9 +686,6 @@ function initDemoBanner() {
   }
 }
 
-/* =====================================================
-   GLOBAL DOM INITIALIZER
-===================================================== */
 document.addEventListener("DOMContentLoaded", () => {
   initializeTheme();
   initializeSidebar();
