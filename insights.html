@@ -45,7 +45,7 @@
         </div>
       </div>
 
-      <!-- KEY METRICS CARDS -->
+      
       <div class="dashboard-stats">
         <div class="dash-card">
           <div class="card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
@@ -76,10 +76,10 @@
         </div>
       </div>
 
-      <!-- MAIN CHARTS ROW -->
+      
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 20px;">
         
-        <!-- Category Spending Distribution -->
+       
         <div class="dashboard-panel" style="margin-bottom:0;">
           <div class="panel-header">
             <div>
@@ -94,7 +94,7 @@
           </div>
         </div>
 
-        <!-- Billing Cycle Distribution -->
+       
         <div class="dashboard-panel" style="margin-bottom:0;">
           <div class="panel-header">
             <div>
@@ -111,7 +111,7 @@
 
       </div>
 
-      <!-- SECOND ROW: Priority Breakdown & Top Expensive Subs -->
+      
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 20px;">
         
         <!-- Priority Breakdown -->
@@ -129,7 +129,7 @@
           </div>
         </div>
 
-        <!-- Top Expensive Services -->
+       
         <div class="dashboard-panel" style="margin-bottom:0;">
           <div class="panel-header">
             <div>
@@ -146,7 +146,7 @@
 
       </div>
 
-      <!-- SMART INSIGHTS RECOMMENDATION BOX -->
+      
       <div class="dashboard-panel">
         <div class="panel-header">
           <div>
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("statActiveSubs").textContent = `${active.length} active of ${subs.length} total`;
     document.getElementById("statAvgMonthly").textContent = money(avgCost);
 
-    // 1. Category Distribution
+    
     const catMap = {};
     const catCount = {};
     active.forEach(s => {
@@ -221,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
       catChart.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>Add active subscriptions to view category breakdown.</p></div>`;
     }
 
-    // 2. Billing Cycle Distribution
+    
     const cycleMap = {};
     active.forEach(s => {
       const cycle = s.billingCycle || "Monthly";
@@ -249,7 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cycleChart.innerHTML = `<div class="empty-state"><div class="empty-icon">🔄</div><p>No active subscriptions available.</p></div>`;
     }
 
-    // 3. Priority Distribution
+    
     const priorityMap = { "Essential": 0, "High Priority": 0, "Medium Priority": 0, "Low Priority": 0, "Optional": 0 };
     const priorityCost = { "Essential": 0, "High Priority": 0, "Medium Priority": 0, "Low Priority": 0, "Optional": 0 };
     
@@ -287,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
       priorityChart.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div><p>No priority breakdown available.</p></div>`;
     }
 
-    // 4. Top Expensive Subscriptions Leaderboard
+   
     const sortedSubs = [...active].sort((a, b) => {
       const costA = Number(a.monthlyCost) || calculateMonthlyCost(a.cost, a.billingCycle);
       const costB = Number(b.monthlyCost) || calculateMonthlyCost(b.cost, b.billingCycle);
@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
       topList.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>No active subscriptions to rank.</p></div>`;
     }
 
-    // 5. Smart Insights Tips
+    
     const tipsContainer = document.getElementById("smartTipsContainer");
     const overlaps = detectOverlaps();
     const tips = [];
@@ -381,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }).join("");
   }
 
-  // Show demo banner and sidebar label if in demo mode
+  
   initDemoBanner();
 
   renderAnalytics();
