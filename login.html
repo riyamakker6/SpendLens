@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,163 +16,137 @@
     <span>Back</span>
   </button>
 
-  <div class="auth-page">
-    <div class="auth-card">
-      <div class="auth-logo">
-        <a href="index.html" class="auth-logo-text" style="text-decoration:none;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-            <path d="M2 17l10 5 10-5"/>
-            <path d="M2 12l10 5 10-5"/>
-          </svg>
-          <span class="logo-accent">Spendlens</span>
-        </a>
-      </div>
-
-      <h1 class="auth-title">Welcome back</h1>
-      <p class="auth-subtitle">Sign in to your Spendlens account</p>
-
-      <div id="loginError" role="alert" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:12px 16px;border-radius:8px;font-size:0.88rem;font-weight:600;margin-bottom:20px;"></div>
-
-      <form id="loginForm" autocomplete="on">
-        <div class="form-group">
-          <label class="form-label" for="loginEmail">Email Address</label>
-          <input
-            class="form-input"
-            type="email"
-            id="loginEmail"
-            placeholder="Enter your email"
-            required
-            autocomplete="username"
-          >
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="loginPassword">Password</label>
-          <input
-            class="form-input"
-            type="password"
-            id="loginPassword"
-            placeholder="Enter your password"
-            required
-            autocomplete="current-password"
-          >
-        </div>
-
-        <button type="submit" id="loginSubmitBtn" class="btn btn-primary" style="width:100%;margin-top:8px;padding:13px;">
-          Sign In
-        </button>
-      </form>
-
-      <div style="margin:16px 0;text-align:center;position:relative;">
-        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
-        <span style="background:var(--surface);padding:0 10px;font-size:0.8rem;color:var(--muted);position:relative;top:-26px;">OR</span>
-      </div>
-
-      <button type="button" id="demoLoginBtn" class="btn btn-secondary" style="width:100%;padding:11px;">
-        ⚡ Quick Demo Sign In
-      </button>
-
-      <p class="auth-footer-text">
-        Don't have an account? <a href="signup.html">Sign up free</a>
-      </p>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <a href="index.html" class="auth-logo-text" style="text-decoration:none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <span class="logo-accent">Spendlens</span>
+      </a>
     </div>
+
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-subtitle">Sign in to your Spendlens account</p>
+
+    <div id="loginError" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:12px 16px;border-radius:8px;font-size:0.88rem;font-weight:600;margin-bottom:20px;"></div>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label class="form-label" for="loginEmail">Email Address</label>
+        <input class="form-input" type="email" id="loginEmail" placeholder="Enter your email" required autocomplete="off" value="">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="loginPassword">Password</label>
+        <input class="form-input" type="password" id="loginPassword" placeholder="Enter your password" required autocomplete="off" value="">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;padding:13px;">Sign In</button>
+    </form>
+
+    <div style="margin: 16px 0; text-align: center; position: relative;">
+      <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
+      <span style="background: var(--surface); padding: 0 10px; font-size: 0.8rem; color: var(--muted); position: relative; top: -26px;">OR</span>
+    </div>
+
+    <button type="button" id="demoLoginBtn" class="btn btn-secondary" style="width:100%;padding:11px;">
+      ⚡ Quick Demo Sign In
+    </button>
+
+    <p class="auth-footer-text">Don't have an account? <a href="signup.html">Sign up free</a></p>
   </div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="script.js"></script>
+<script>
+  /* =========================================
+     BACK BUTTON
+     ========================================= */
+  function goBack() {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "index.html";
+    }
+  }
 
-  <div id="toast" class="toast"></div>
+document.addEventListener("DOMContentLoaded", () => {
+  // Ensure fields are blank on initial load or return
+  const emailInput = document.getElementById("loginEmail");
+  const passwordInput = document.getElementById("loginPassword");
+  if (emailInput) emailInput.value = "";
+  if (passwordInput) passwordInput.value = "";
 
-  <script src="script.js"></script>
-  <script>
-    const API_BASE_URL = "http://127.0.0.1:5000/api";
+  document.getElementById("loginForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const err = document.getElementById("loginError");
 
-    function goBack() {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.location.href = "index.html";
-      }
+    // 1. Reset error state
+    err.style.display = "none";
+    err.textContent = "";
+
+    // 2. Client-side basic validation
+    if (!email || !password) {
+      err.textContent = "Please provide both email and password.";
+      err.style.display = "block";
+      return;
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const loginForm = document.getElementById("loginForm");
-      const emailInput = document.getElementById("loginEmail");
-      const passwordInput = document.getElementById("loginPassword");
-      const errorBox = document.getElementById("loginError");
-      const submitButton = document.getElementById("loginSubmitBtn");
-      const demoButton = document.getElementById("demoLoginBtn");
+    // 3. UI feedback during network request
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing In...";
 
-      loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const email = emailInput.value.trim().toLowerCase();
-        const password = passwordInput.value;
-
-        errorBox.style.display = "none";
-        submitButton.disabled = true;
-        submitButton.textContent = "Signing in...";
-
-        try {
-          const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            credentials: "include",
-            body: JSON.stringify({ email, password })
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            errorBox.textContent =
-              response.status === 401
-                ? "Invalid email or password. Please check your credentials."
-                : data.message || "Unable to log in. Please try again.";
-
-            errorBox.style.display = "block";
-            return;
-          }
-
-          // Disable demo mode for a real account.
-          localStorage.removeItem(STORAGE.demoMode);
-          localStorage.removeItem(STORAGE.demoOrigin);
-
-          // Store basic user details for existing UI code.
-          // Authentication is maintained by the backend session cookie.
-          setCurrentUser({
-            id: data.id,
-            name: data.name,
-            email: data.email
-          });
-
-          showToast("Logged in successfully!");
-
-          setTimeout(() => {
-            window.location.href = "dashboard.html";
-          }, 350);
-
-        } catch (error) {
-          errorBox.textContent =
-            "Cannot connect to the server. Make sure the backend is running.";
-          errorBox.style.display = "block";
-        } finally {
-          submitButton.disabled = false;
-          submitButton.textContent = "Sign In";
-        }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
       });
 
-      // Keep the existing demo login functionality.
-      demoButton.addEventListener("click", () => {
-        localStorage.removeItem(STORAGE.currentUser);
-        enterDemoMode("login");
-        showToast("Quick Demo enabled — sample data loaded.");
+      const data = await response.json();
 
-        setTimeout(() => {
-          window.location.href = "dashboard.html";
-        }, 300);
-      });
-    });
-  </script>
+      if (!response.ok) {
+        err.textContent = data.error || "Invalid email or password. Please check your credentials.";
+        err.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+        return;
+      }
 
+      // 4. Save session: store public user info and JWT token only (never passwords)
+      localStorage.removeItem(STORAGE.demoMode);
+      localStorage.removeItem(STORAGE.demoOrigin);
+      setAuthSession(data.user, data.token);
+
+      // 5. Success notification & redirect to dashboard
+      showToast("Logged in successfully!");
+      setTimeout(() => {
+        window.location.href = "dashboard.html";
+      }, 350);
+
+    } catch (networkError) {
+      err.textContent = "Unable to connect to server. Please verify backend is running on port 5000.";
+      err.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
+    }
+  });
+
+  // Quick Demo Sign In: activates Demo Mode from login page
+  document.getElementById("demoLoginBtn").addEventListener("click", () => {
+    localStorage.removeItem(STORAGE.currentUser);
+    localStorage.removeItem(STORAGE.token);
+    enterDemoMode("login");
+    showToast("Quick Demo enabled — sample data loaded.");
+    setTimeout(() => {
+      window.location.href = "dashboard.html";
+    }, 300);
+  });
+});
+</script>
 </body>
 </html>

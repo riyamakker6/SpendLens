@@ -142,10 +142,11 @@
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!requireLogin()) return;
 
   const user = getCurrentUser();
+  let budgetLoadFailed = false;
 
   // ---- Time greeting badge ----
   const hour = new Date().getHours();
@@ -254,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderRecent(subscriptions);
     renderRenewals(active);
-    renderBudget(monthly);
+    renderBudget(monthly, budgetLoadFailed);
   }
 
   function renderRecent(subscriptions) {
@@ -290,7 +291,8 @@ document.addEventListener("DOMContentLoaded", () => {
     today.setHours(0, 0, 0, 0);
 
     const upcoming = subscriptions.filter(s => s.renewalDate).map(s => {
-      const parts = String(s.renewalDate).split("-");
+      const cleanDate = String(s.renewalDate).split("T")[0];
+      const parts = cleanDate.split("-");
       let renewDate;
       if (parts.length === 3) {
         renewDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
@@ -299,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       renewDate.setHours(0, 0, 0, 0);
       const diff = Math.ceil((renewDate - today) / (1000 * 60 * 60 * 24));
-      return { ...s, days: diff };
+      return { ...s, days: diff, displayDate: cleanDate };
     }).filter(s => s.days >= 0 && s.days <= 30).sort((a, b) => a.days - b.days);
 
     if (!upcoming.length) {
@@ -313,17 +315,40 @@ document.addEventListener("DOMContentLoaded", () => {
       return `<div class="renewal-item">
         <div>
           <strong>${escapeHTML(s.name)}</strong>
-          <span>${formatDate(s.renewalDate)} • ${money(s.monthlyCost || s.cost)}</span>
+          <span>${formatDate(s.displayDate)} • ${money(s.monthlyCost !== undefined ? s.monthlyCost : s.cost)}</span>
         </div>
         <span class="${cls}" style="padding:4px 10px;border-radius:999px;font-size:0.75rem;font-weight:700;background:${s.days<=3?'#FEE2E2':'var(--primary-light)'};color:${s.days<=3?'#DC2626':'var(--primary-dark)'};">${dayLabel}</span>
       </div>`;
     }).join("");
   }
 
-  function renderBudget(monthly) {
-    // In demo mode read from demo budget key, never touch personal budget
-    const budgetKey = isDemoMode() ? STORAGE.demoBudget : STORAGE.budget;
-    const budget = Number(localStorage.getItem(budgetKey) || 0);
+  function renderBudget(monthly, loadFailed = false) {
+    if (loadFailed) {
+      document.getElementById("budgetAmount").textContent = "—";
+      document.getElementById("budgetSpent").textContent = money(monthly);
+      document.getElementById("budgetRemaining").textContent = "—";
+      const bar = document.getElementById("budgetProgress");
+      bar.style.width = "0%";
+      const msg = document.getElementById("budgetMessage");
+      msg.innerHTML = `⚠️ Failed to load budget from server. <button id="retryBudgetBtn" class="btn btn-secondary" style="padding:2px 8px;font-size:0.75rem;margin-left:8px;">Retry</button>`;
+      msg.className = "budget-message danger";
+      const retryBtn = document.getElementById("retryBudgetBtn");
+      if (retryBtn) {
+        retryBtn.onclick = async () => {
+          try {
+            await fetchUserBudget(true);
+            budgetLoadFailed = false;
+            renderDashboard();
+            showToast("Budget loaded successfully!");
+          } catch (e) {
+            showToast("Failed to load budget: " + e.message);
+          }
+        };
+      }
+      return;
+    }
+
+    const budget = getUserBudget();
     document.getElementById("budgetAmount").textContent = money(budget);
     document.getElementById("budgetSpent").textContent = money(monthly);
     const remaining = budget - monthly;
@@ -349,16 +374,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  document.getElementById("setBudgetBtn").addEventListener("click", () => {
+  document.getElementById("setBudgetBtn").addEventListener("click", async () => {
     if (isDemoMode()) return; // Guard: no budget editing in demo mode
-    const current = localStorage.getItem(STORAGE.budget) || "";
-    const val = prompt("Set monthly budget (₹):", current);
+    const current = getUserBudget();
+    const val = prompt("Set monthly budget (₹):", current > 0 ? current : "");
     if (val !== null) {
       const parsed = parseFloat(val);
       if (!isNaN(parsed) && parsed >= 0) {
-        localStorage.setItem(STORAGE.budget, parsed);
-        renderDashboard();
-        showToast("Budget updated!");
+        try {
+          await updateUserBudgetAPI(parsed);
+          budgetLoadFailed = false;
+          renderDashboard();
+          showToast("Budget updated successfully!");
+        } catch (err) {
+          alert("Failed to save budget: " + (err.message || "Network or server error"));
+        }
       } else {
         alert("Please enter a valid numeric budget.");
       }
@@ -369,7 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("demoBtn").addEventListener("click", () => {
     if (isDemoMode()) {
       // EXIT DEMO MODE
-      exitDemoMode((restoredUser) => {
+      exitDemoMode(async (restoredUser) => {
         if (restoredUser) {
           // CASE 2: Personal account restored in-place without logout!
           const banner = document.getElementById("demoBanner");
@@ -378,6 +408,18 @@ document.addEventListener("DOMContentLoaded", () => {
           if (sideLabel) sideLabel.remove();
 
           applyDemoUI();
+          try {
+            await fetchUserSubscriptions(true);
+          } catch (err) {
+            console.error("Dashboard fetch error:", err);
+          }
+          try {
+            budgetLoadFailed = false;
+            await fetchUserBudget(true);
+          } catch (err) {
+            budgetLoadFailed = true;
+            console.error("Dashboard budget fetch error:", err);
+          }
           renderDashboard();
           showToast("Demo Mode exited — welcome back, " + (restoredUser.name || "User") + "!");
         } else {
@@ -390,33 +432,29 @@ document.addEventListener("DOMContentLoaded", () => {
       enterDemoMode("personal-account");
       applyDemoUI();
       initDemoBanner();
+      budgetLoadFailed = false;
       renderDashboard();
       showToast("Demo Mode enabled — sample data loaded.");
     }
   });
 
-
-  // Initial render
+  // Initial render: fetch from backend then render
   applyDemoUI();
   initDemoBanner();
-
-  async function initializeDashboard() {
-    try {
-      if (!isDemoMode()) {
-        if (!requireLogin()) return;
-        await loadUserSubscriptionsFromAPI();
-      }
-
-      renderDashboard();
-    } catch (error) {
-      console.error("Failed to load dashboard subscriptions:", error);
-      showToast("Could not load subscriptions from the server. Please log in again.");
-    }
+  try {
+    await fetchUserSubscriptions(true);
+  } catch (err) {
+    console.error("Dashboard subscription fetch error:", err);
   }
-
-  initializeDashboard();
+  try {
+    budgetLoadFailed = false;
+    await fetchUserBudget(true);
+  } catch (err) {
+    budgetLoadFailed = true;
+    console.error("Dashboard budget fetch error:", err);
+  }
+  renderDashboard();
 });
-
 </script>
 </body>
 </html>

@@ -165,12 +165,12 @@
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!requireLogin()) return;
 
   function renderAnalytics() {
     const subs = getUserSubscriptions();
-    const active = getActiveSubscriptions();
+    const active = subs.filter(s => String(s.status || "Active").toLowerCase() === "active");
 
     const totalMonthly = getMonthlyTotal();
     const totalYearly = totalMonthly * 12;
@@ -383,6 +383,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Show demo banner and sidebar label if in demo mode
   initDemoBanner();
+
+  try {
+    await fetchUserSubscriptions();
+  } catch (err) {
+    console.error("Insights fetch error:", err);
+  }
 
   renderAnalytics();
 });

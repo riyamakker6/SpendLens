@@ -3,9 +3,22 @@
 ===================================================== */
 
 /* =====================================================
+   API CONFIGURATION
+===================================================== */
+// Backend base URL (can be adjusted for staging / production)
+const API_BASE_URL = "http://localhost:5000";
+if (typeof window !== "undefined") {
+  window.API_BASE_URL = API_BASE_URL;
+}
+if (typeof global !== "undefined") {
+  global.API_BASE_URL = API_BASE_URL;
+}
+
+/* =====================================================
    LOCAL STORAGE KEYS
 ===================================================== */
 const STORAGE = {
+  token: "Spendlens_token",
   users: "Spendlens_users",
   currentUser: "Spendlens_current_user",
   subscriptions: "Spendlens_subscriptions",
@@ -30,8 +43,6 @@ if (typeof global !== "undefined") {
 /* =====================================================
    BASIC HELPERS & UTILITIES
 ===================================================== */
-
-
 function getData(key, defaultValue) {
   const data = localStorage.getItem(key);
   if (data === null || data === undefined) {
@@ -117,6 +128,35 @@ function getAuthenticatedUser() {
   return getData(STORAGE.currentUser, null);
 }
 
+function getAuthToken() {
+  return localStorage.getItem(STORAGE.token) || null;
+}
+
+function setAuthSession(user, token) {
+  if (user) {
+    saveData(STORAGE.currentUser, user);
+  }
+  if (token) {
+    localStorage.setItem(STORAGE.token, token);
+  }
+}
+
+function clearAuthSession() {
+  localStorage.removeItem(STORAGE.currentUser);
+  localStorage.removeItem(STORAGE.token);
+  localStorage.removeItem(STORAGE.demoMode);
+  localStorage.removeItem(STORAGE.demoOrigin);
+}
+
+function isAuthenticated() {
+  if (isDemoMode()) {
+    return true;
+  }
+  const user = getAuthenticatedUser();
+  const token = getAuthToken();
+  return Boolean(user && token);
+}
+
 function getUsers() {
   return getData(STORAGE.users, []);
 }
@@ -135,21 +175,25 @@ function requireLogin() {
     return true;
   }
 
-  const user = getAuthenticatedUser();
-  if (!user) {
+  // Client-side authentication check for smooth UI routing.
+  // NOTE: This client-side check provides a smooth UI redirect only;
+  // real security requires verifying the JWT token on backend APIs.
+  if (!isAuthenticated()) {
     window.location.href = "login.html";
     return false;
   }
-
   return true;
 }
 
 function logout() {
-  // Clear demo state and current user state
+  // Clear demo state, current user, auth token, and cached subscriptions
   localStorage.removeItem(STORAGE.demoMode);
   localStorage.removeItem(STORAGE.demoOrigin);
   localStorage.removeItem(STORAGE.currentUser);
+  localStorage.removeItem(STORAGE.token);
   sessionStorage.removeItem(STORAGE.demoBannerDismissed);
+  currentSubscriptionsCache = null;
+  currentBudgetCache = null;
 
   // Reset theme to default light theme after logout
   localStorage.removeItem(STORAGE.theme);
@@ -159,7 +203,7 @@ function logout() {
 
   setTimeout(() => {
     window.location.href = "login.html";
-  }, 350);
+  }, 400);
 }
 
 /* =====================================================
@@ -214,6 +258,8 @@ function seedDemoSubscriptions() {
 function enterDemoMode(origin) {
   seedDemoSubscriptions();
   localStorage.setItem(STORAGE.demoMode, "true");
+  currentSubscriptionsCache = null;
+  currentBudgetCache = null;
 
   if (!origin) {
     const realUser = getAuthenticatedUser();
@@ -236,6 +282,8 @@ function exitDemoMode(onExitOrRedirect = true) {
   localStorage.removeItem(STORAGE.demoMode);
   localStorage.removeItem(STORAGE.demoOrigin);
   sessionStorage.removeItem(STORAGE.demoBannerDismissed);
+  currentSubscriptionsCache = null;
+  currentBudgetCache = null;
 
   if (origin === "personal-account" && realUser) {
     // CASE 2: User was already logged in to their personal account.
@@ -254,6 +302,7 @@ function exitDemoMode(onExitOrRedirect = true) {
     // CASE 1: User entered demo from login page without an authenticated account.
     // Clear any user session and return to a clean login page.
     localStorage.removeItem(STORAGE.currentUser);
+    localStorage.removeItem(STORAGE.token);
     if (typeof onExitOrRedirect === "function") {
       onExitOrRedirect(null);
     } else if (onExitOrRedirect) {
@@ -269,31 +318,218 @@ function getDemoSubscriptions() {
   );
 }
 
-/* =====================================================
-   SUBSCRIPTION DATA (MONGODB API + LOCAL CACHE)
-===================================================== */
+if (typeof window !== "undefined") {
+  window.isDemoMode = isDemoMode;
+  window.enterDemoMode = enterDemoMode;
+  window.exitDemoMode = exitDemoMode;
+}
+if (typeof global !== "undefined") {
+  global.isDemoMode = isDemoMode;
+  global.enterDemoMode = enterDemoMode;
+  global.exitDemoMode = exitDemoMode;
+}
 
-const SPENDLENS_API_BASE_URL = "http://127.0.0.1:5000/api";
+/* =====================================================
+   BACKEND SUBSCRIPTION API CLIENT & RETRIEVAL
+===================================================== */
+// In-memory cache of subscriptions for the current user session
+let currentSubscriptionsCache = null;
 
 /**
- * Make requests to the backend.
- * Include session cookies so the backend knows which user is logged in.
+ * Loads subscriptions from the backend API (or demo storage in demo mode).
+ * Caches results in memory so synchronous helper calculations work smoothly.
  */
-async function subscriptionApiRequest(path, options = {}) {
-  const response = await fetch(`${SPENDLENS_API_BASE_URL}${path}`, {
-    ...options,
-    credentials: "include",
+async function fetchUserSubscriptions(forceRefresh = false) {
+  if (isDemoMode()) {
+    currentSubscriptionsCache = getDemoSubscriptions().map((s) => ({
+      ...s,
+      _id: s.id,
+    }));
+    return currentSubscriptionsCache;
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    currentSubscriptionsCache = [];
+    return [];
+  }
+
+  if (currentSubscriptionsCache !== null && !forceRefresh) {
+    return currentSubscriptionsCache;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      // Token expired or invalid
+      logout();
+      return [];
+    }
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to load subscriptions from server");
+    }
+
+    const data = await response.json();
+    const subsArray = Array.isArray(data) ? data : data.subscriptions || [];
+
+    // Ensure each subscription has both `id` and `_id` mapped identically
+    currentSubscriptionsCache = subsArray.map((s) => ({
+      ...s,
+      id: s._id || s.id,
+      monthlyCost: Number(s.monthlyCost !== undefined ? s.monthlyCost : s.cost),
+    }));
+
+    return currentSubscriptionsCache;
+  } catch (err) {
+    console.error("fetchUserSubscriptions error:", err);
+    throw err;
+  }
+}
+
+/**
+ * Returns currently loaded subscriptions (synchronous getter).
+ * Used by existing helpers like getMonthlyTotal(), detectOverlaps(), etc.
+ */
+function getUserSubscriptions() {
+  if (isDemoMode()) {
+    return getDemoSubscriptions().map((s) => ({
+      ...s,
+      _id: s.id,
+    }));
+  }
+  return currentSubscriptionsCache || [];
+}
+
+/**
+ * Legacy compatibility stub: no longer authoritative in localStorage.
+ * For demo mode, updates localStorage; for real users, logs warning.
+ */
+function saveUserSubscriptions(userSubscriptions) {
+  if (isDemoMode()) {
+    const all = getData(STORAGE.subscriptions, []);
+    const withoutDemo = all.filter((s) => s.userId !== DEMO_USER_ID);
+    saveData(STORAGE.subscriptions, [...withoutDemo, ...userSubscriptions]);
+  }
+}
+
+/**
+ * Creates a new subscription via POST /api/subscriptions
+ */
+async function createSubscriptionAPI(subData) {
+  if (isDemoMode()) {
+    throw new Error("Creating subscriptions is disabled in Demo Mode");
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Authentication required. Please log in.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
+    method: "POST",
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(subData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to create subscription");
+  }
+
+  const newSub = {
+    ...data,
+    id: data._id || data.id,
+    monthlyCost: Number(data.monthlyCost !== undefined ? data.monthlyCost : data.cost),
+  };
+
+  if (currentSubscriptionsCache) {
+    currentSubscriptionsCache.unshift(newSub);
+  }
+
+  return newSub;
+}
+
+/**
+ * Updates an existing subscription via PUT /api/subscriptions/:id
+ */
+async function updateSubscriptionAPI(id, subData) {
+  if (isDemoMode()) {
+    throw new Error("Updating subscriptions is disabled in Demo Mode");
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Authentication required. Please log in.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/subscriptions/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(subData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to update subscription");
+  }
+
+  const updatedSub = {
+    ...data,
+    id: data._id || data.id,
+    monthlyCost: Number(data.monthlyCost !== undefined ? data.monthlyCost : data.cost),
+  };
+
+  if (currentSubscriptionsCache) {
+    currentSubscriptionsCache = currentSubscriptionsCache.map((s) =>
+      (s._id === id || s.id === id ? updatedSub : s)
+    );
+  }
+
+  return updatedSub;
+}
+
+/**
+ * Deletes a subscription via DELETE /api/subscriptions/:id
+ */
+async function deleteSubscriptionAPI(id) {
+  if (isDemoMode()) {
+    throw new Error("Deleting subscriptions is disabled in Demo Mode");
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Authentication required. Please log in.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/subscriptions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
   });
 
-  const data = await response.json().catch(() => ({}));
-
+  const data = await response.json();
   if (!response.ok) {
-    throw new Error(
-      data.message || `Request failed with status ${response.status}`
+    throw new Error(data.error || "Failed to delete subscription");
+  }
+
+  if (currentSubscriptionsCache) {
+    currentSubscriptionsCache = currentSubscriptionsCache.filter(
+      (s) => s._id !== id && s.id !== id
     );
   }
 
@@ -301,161 +537,156 @@ async function subscriptionApiRequest(path, options = {}) {
 }
 
 /**
- * Read cached subscriptions.
- * Existing dashboard and analytics calculations use this function.
+ * Gets a single subscription by ID via GET /api/subscriptions/:id
  */
-function getAllSubscriptions() {
-  return getData(STORAGE.subscriptions, []);
-}
-
-/**
- * Get the current user's cached subscriptions.
- * Demo mode remains separate from personal account data.
- */
-function getUserSubscriptions() {
+async function getSubscriptionByIdAPI(id) {
   if (isDemoMode()) {
-    return getDemoSubscriptions();
+    const demo = getDemoSubscriptions().find((s) => s.id === id || s._id === id);
+    if (!demo) throw new Error("Subscription not found");
+    return { ...demo, _id: demo.id };
   }
 
-  const user = getAuthenticatedUser();
-  if (!user) return [];
-
-  return getAllSubscriptions().filter(
-    (subscription) => String(subscription.userId) === String(user.id)
-  );
-}
-
-/**
- * Fetch subscriptions from MongoDB and refresh the local cache.
- * Call this with await before rendering subscription-dependent pages.
- */
-async function loadUserSubscriptionsFromAPI() {
-  if (isDemoMode()) {
-    return getDemoSubscriptions();
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Authentication required. Please log in.");
   }
 
-  const user = getAuthenticatedUser();
-
-  if (!user) {
-    throw new Error("Please log in to load your subscriptions.");
-  }
-
-  const data = await subscriptionApiRequest("/subscriptions");
-
-  if (!Array.isArray(data)) {
-    throw new Error("The server returned an invalid subscriptions response.");
-  }
-
-  const subscriptions = data.map((sub) => {
-    const cost = Number(sub.cost ?? sub.monthlyCost) || 0;
-
-    return {
-      ...sub,
-      id: String(sub._id ?? sub.id),
-      userId: user.id,
-      cost,
-      monthlyCost:
-        sub.monthlyCost !== undefined && sub.monthlyCost !== null
-          ? Number(sub.monthlyCost)
-          : calculateMonthlyCost(cost, sub.billingCycle),
-    };
+  const response = await fetch(`${API_BASE_URL}/api/subscriptions/${encodeURIComponent(id)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 
-  // Replace only this user's cached subscriptions.
-  // Keep any other user's cache and demo sample records untouched.
-  const allSubscriptions = getAllSubscriptions();
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to fetch subscription");
+  }
 
-  const otherSubscriptions = allSubscriptions.filter(
-    (sub) =>
-      String(sub.userId) !== String(user.id) &&
-      sub.userId !== DEMO_USER_ID
-  );
+  return {
+    ...data,
+    id: data._id || data.id,
+    monthlyCost: Number(data.monthlyCost !== undefined ? data.monthlyCost : data.cost),
+  };
+}
 
-  saveData(STORAGE.subscriptions, [
-    ...otherSubscriptions,
-    ...subscriptions,
-    ...allSubscriptions.filter((sub) => sub.userId === DEMO_USER_ID),
-  ]);
+/* =====================================================
+   BACKEND BUDGET API CLIENT & RETRIEVAL (Phase 5D)
+===================================================== */
+// In-memory cache of the monthly budget for the current session
+let currentBudgetCache = null;
 
-  return subscriptions;
+/**
+ * Loads the user's monthly budget from MongoDB Atlas (or demo storage in demo mode).
+ * Returns the numeric budget amount.
+ * Does NOT fall back to stale localStorage for authenticated users.
+ */
+async function fetchUserBudget(forceRefresh = false) {
+  if (isDemoMode()) {
+    const demoBudget = Number(localStorage.getItem(STORAGE.demoBudget) || 2000);
+    currentBudgetCache = demoBudget;
+    return currentBudgetCache;
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    currentBudgetCache = 0;
+    return 0;
+  }
+
+  if (currentBudgetCache !== null && !forceRefresh) {
+    return currentBudgetCache;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/budget`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      logout();
+      return 0;
+    }
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to load budget from server");
+    }
+
+    const data = await response.json();
+    currentBudgetCache = Number(data.amount !== undefined ? data.amount : 0);
+    return currentBudgetCache;
+  } catch (err) {
+    console.error("fetchUserBudget error:", err);
+    throw err;
+  }
 }
 
 /**
- * Create a subscription in MongoDB.
+ * Returns currently loaded budget (synchronous getter).
+ * Returns 0 if not loaded yet or if not set.
  */
-async function createSubscriptionInAPI(subscription) {
-  const data = await subscriptionApiRequest("/subscriptions", {
-    method: "POST",
-    body: JSON.stringify(subscription),
+function getUserBudget() {
+  if (isDemoMode()) {
+    return Number(localStorage.getItem(STORAGE.demoBudget) || 2000);
+  }
+  return currentBudgetCache !== null ? currentBudgetCache : 0;
+}
+
+/**
+ * Creates or updates the user's monthly budget via PUT /api/budget.
+ * In demo mode, updates the demo budget in localStorage without touching Atlas.
+ * For real authenticated users, updates Atlas via the backend and updates the cache.
+ */
+async function updateUserBudgetAPI(newAmount) {
+  const numericAmount = Number(newAmount);
+  if (isNaN(numericAmount) || !isFinite(numericAmount) || numericAmount < 0) {
+    throw new Error("Budget amount must be a finite, non-negative number");
+  }
+
+  if (isDemoMode()) {
+    localStorage.setItem(STORAGE.demoBudget, String(numericAmount));
+    currentBudgetCache = numericAmount;
+    return { amount: numericAmount };
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error("Authentication required. Please log in.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/budget`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ amount: numericAmount }),
   });
 
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to update budget on server");
+  }
+
+  currentBudgetCache = Number(data.amount !== undefined ? data.amount : numericAmount);
   return data;
 }
 
-/**
- * Update a subscription in MongoDB.
- */
-async function updateSubscriptionInAPI(id, subscription) {
-  return subscriptionApiRequest(
-    `/subscriptions/${encodeURIComponent(id)}`,
-    {
-      method: "PUT",
-      body: JSON.stringify(subscription),
-    }
-  );
+if (typeof window !== "undefined") {
+  window.fetchUserBudget = fetchUserBudget;
+  window.getUserBudget = getUserBudget;
+  window.updateUserBudgetAPI = updateUserBudgetAPI;
+}
+if (typeof global !== "undefined") {
+  global.fetchUserBudget = fetchUserBudget;
+  global.getUserBudget = getUserBudget;
+  global.updateUserBudgetAPI = updateUserBudgetAPI;
 }
 
-/**
- * Delete a subscription from MongoDB.
- */
-async function deleteSubscriptionFromAPI(id) {
-  return subscriptionApiRequest(
-    `/subscriptions/${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-    }
-  );
-}
-
-/**
- * Update the local cache only.
- * This function does NOT write to MongoDB.
- */
-function saveUserSubscriptions(userSubscriptions) {
-  if (isDemoMode()) return;
-
-  const user = getAuthenticatedUser();
-  if (!user) return;
-
-  const allSubscriptions = getAllSubscriptions();
-
-  const otherSubscriptions = allSubscriptions.filter(
-    (subscription) =>
-      String(subscription.userId) !== String(user.id)
-  );
-
-  const normalizedSubscriptions = userSubscriptions.map((sub) => {
-    const cost =
-      Number(sub.cost ?? sub.monthlyCost) || 0;
-
-    const monthlyCost =
-      sub.monthlyCost !== undefined && sub.monthlyCost !== null
-        ? Number(sub.monthlyCost)
-        : calculateMonthlyCost(cost, sub.billingCycle);
-
-    return {
-      ...sub,
-      userId: user.id,
-      cost,
-      monthlyCost: Math.round(monthlyCost * 100) / 100,
-    };
-  });
-
-  saveData(STORAGE.subscriptions, [
-    ...otherSubscriptions,
-    ...normalizedSubscriptions,
-  ]);
-}
 /* =====================================================
    COST CALCULATIONS
 ===================================================== */
@@ -522,22 +753,23 @@ function detectOverlaps() {
   const overlaps = [];
 
   Object.keys(categories).forEach((category) => {
-    const subs = categories[category];
-    if (subs.length > 1) {
-      const costs = subs.map(
+    const subscriptions = categories[category];
+    if (subscriptions.length > 1) {
+      const costs = subscriptions.map(
         (s) =>
           Number(s.monthlyCost) || calculateMonthlyCost(s.cost, s.billingCycle),
       );
       const totalMonthly = costs.reduce((sum, c) => sum + c, 0);
 
+      // Potential savings: if user keeps only the primary (most expensive or essential) service, they save the rest
       const maxCost = Math.max(...costs);
       const minCost = Math.min(...costs);
       const secondarySavingsMonthly = totalMonthly - maxCost;
 
       overlaps.push({
         category,
-        subscriptions: subs,
-        count: subs.length,
+        subscriptions,
+        count: subscriptions.length,
         monthlyCost: totalMonthly,
         potentialMonthlySavings:
           secondarySavingsMonthly > 0 ? secondarySavingsMonthly : minCost,
@@ -688,8 +920,7 @@ function initializeNavbar() {
   }
 
   const authButton = document.getElementById("authBtn");
-  const user = getAuthenticatedUser();
-  if (authButton && user) {
+  if (authButton && isAuthenticated()) {
     authButton.textContent = "Dashboard";
     authButton.href = "dashboard.html";
   }

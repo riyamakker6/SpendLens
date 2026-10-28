@@ -143,15 +143,21 @@
 <div id="toast" class="toast"></div>
 <script src="script.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!requireLogin()) return;
   const user = getCurrentUser();
 
   initDemoBanner();
 
+  try {
+    await fetchUserSubscriptions();
+  } catch (err) {
+    console.error("Profile subscriptions fetch error:", err);
+  }
+
   function loadUserProfile() {
     const isDemo = isDemoMode();
-    const currentUser = getCurrentUser();
+    const currentUser = isDemo ? getCurrentUser() : getAuthenticatedUser();
     if (!currentUser) return;
     
     const displayName = isDemo ? "Demo User" : (currentUser.name || "User");
@@ -201,9 +207,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 }
 
+
   function updateSummary() {
     const subs = getUserSubscriptions();
-    const active = getActiveSubscriptions();
+    const active = subs.filter(s => String(s.status || "Active").toLowerCase() === "active");
     const monthly = getMonthlyTotal();
 
     document.getElementById("profileTotalSubs").textContent = subs.length;
@@ -246,17 +253,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     err.style.display = "none";
 
-    const current = getCurrentUser();
+    const currentUser = getCurrentUser();
     const users = getUsers();
-    const updatedUsers = users.map(u => {
-      if (u.id === current.id) {
-        return { ...u, name: newName, email: newEmail };
-      }
-      return u;
-    });
-
+    const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, name: newName, email: newEmail } : u);
     saveUsers(updatedUsers);
-    const updatedCurrent = { ...current, name: newName, email: newEmail };
+
+    const updatedCurrent = { ...currentUser, name: newName, email: newEmail };
     setCurrentUser(updatedCurrent);
 
     loadUserProfile();

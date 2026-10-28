@@ -289,8 +289,7 @@ function reviewReason(sub, portfolio, budget) {
 }
 
 function renderOverlapSection() {
-  const subs = getUserSubscriptions();
-  const overlaps = detectOverlaps(subs);
+  const overlaps = detectOverlaps();
   const container = document.getElementById("overlapContainer");
   if (!container) return;
 
@@ -341,8 +340,7 @@ function renderOptimizer() {
   const container = document.getElementById("optimizerResults");
   if (!container) return;
 
-  const subs = getUserSubscriptions();
-  const active = getActiveSubscriptions(subs);
+  const active = getActiveSubscriptions();
   if (!active.length) {
     container.innerHTML = `<div class="empty-box dashboard-panel">
       <div style="font-size:48px;margin-bottom:12px;">📦</div>
@@ -355,13 +353,10 @@ function renderOptimizer() {
 
   let budget = Number(document.getElementById("budgetInput").value);
   if (!budget || budget <= 0) {
-    budget = Number(localStorage.getItem(STORAGE.budget)) || 2000;
-    const budgetInput = document.getElementById("budgetInput");
-    if (budgetInput) budgetInput.value = budget;
+    budget = getUserBudget() || 2000;
   }
-  localStorage.setItem(STORAGE.budget, budget);
 
-  const currentSpend = getMonthlyTotal(subs);
+  const currentSpend = getMonthlyTotal();
   const yearlySpend = currentSpend * 12;
   const result = generateRecommendedPortfolio(active, budget);
   const portfolio = result.portfolio;
@@ -504,14 +499,13 @@ window.keepFromReview = function(id) {
 };
 
 function renderManualPortfolio() {
-  const subs = getUserSubscriptions();
-  const active = getActiveSubscriptions(subs);
-  const budget = Number(localStorage.getItem(STORAGE.budget)) || 2000;
+  const active = getActiveSubscriptions();
+  const budget = getUserBudget() || 2000;
   const ids = getData(STORAGE.recommendedPortfolio, []);
   const portfolio = active.filter(s => ids.includes(s.id));
   const review = active.filter(s => !ids.includes(s.id));
 
-  const currentSpend = getMonthlyTotal(subs);
+  const currentSpend = getMonthlyTotal();
   const selectedCost = portfolio.reduce((sum, s) => sum + (Number(s.monthlyCost) || calculateMonthlyCost(s.cost, s.billingCycle)), 0);
   const monthlySavings = Math.max(0, currentSpend - selectedCost);
   const yearlySavings = monthlySavings * 12;
@@ -595,10 +589,22 @@ function renderManualPortfolio() {
   `;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (!requireLogin()) return;
 
-  const savedBudget = Number(localStorage.getItem(STORAGE.budget)) || 2000;
+  // Show demo banner and sidebar label if in demo mode
+  initDemoBanner();
+
+  try {
+    await Promise.all([
+      fetchUserSubscriptions(),
+      fetchUserBudget(),
+    ]);
+  } catch (err) {
+    console.error("Optimizer fetch error:", err);
+  }
+
+  const savedBudget = getUserBudget() || 2000;
   const budgetInput = document.getElementById("budgetInput");
   if (budgetInput) {
     budgetInput.value = savedBudget;
@@ -608,45 +614,57 @@ document.addEventListener("DOMContentLoaded", () => {
     if (Number(btn.dataset.budget) === savedBudget) {
       btn.classList.add("active");
     }
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const b = Number(btn.dataset.budget);
       if (budgetInput) budgetInput.value = b;
-      localStorage.setItem(STORAGE.budget, b);
       document.querySelectorAll(".budget-btn").forEach(x => x.classList.remove("active"));
       btn.classList.add("active");
+      try {
+        await updateUserBudgetAPI(b);
+      } catch (e) {
+        console.error("Failed to update budget:", e);
+      }
       renderOptimizer();
     });
   });
 
   if (budgetInput) {
-    budgetInput.addEventListener("change", function() {
+    budgetInput.addEventListener("input", function() {
+      const b = Number(this.value);
+      document.querySelectorAll(".budget-btn").forEach(btn => {
+        btn.classList.toggle("active", Number(btn.dataset.budget) === b);
+      });
+    });
+    budgetInput.addEventListener("change", async function() {
       const b = Number(this.value);
       if (b > 0) {
-        localStorage.setItem(STORAGE.budget, b);
-        document.querySelectorAll(".budget-btn").forEach(btn => {
-          btn.classList.toggle("active", Number(btn.dataset.budget) === b);
-        });
+        try {
+          await updateUserBudgetAPI(b);
+        } catch (e) {
+          console.error("Failed to update budget:", e);
+        }
       }
     });
   }
 
   const findBtn = document.getElementById("findPlanBtn");
   if (findBtn) {
-    findBtn.addEventListener("click", () => {
+    findBtn.addEventListener("click", async () => {
       const val = Number(budgetInput.value);
       if (!val || val <= 0) {
         alert("Please enter a valid monthly budget amount.");
         budgetInput.focus();
         return;
       }
-      localStorage.setItem(STORAGE.budget, val);
+      try {
+        await updateUserBudgetAPI(val);
+      } catch (e) {
+        console.error("Failed to update budget:", e);
+      }
       renderOptimizer();
       showToast("Generated optimal plan!");
     });
   }
-
-  // Show demo banner and sidebar label if in demo mode
-  initDemoBanner();
 
   renderOverlapSection();
   renderOptimizer();
