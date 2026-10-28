@@ -177,7 +177,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     errorBox.textContent = "";
   };
 
-  // Demo mode: adding and editing remain disabled.
   if (isDemoMode()) {
     errorBox.style.display = "block";
     errorBox.style.background = "var(--primary-very-light)";
@@ -202,7 +201,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const editId = params.get("id");
   let existingSub = null;
 
-  // Load the user's actual subscriptions from MongoDB before editing.
   try {
     await loadUserSubscriptionsFromAPI();
   } catch (error) {
@@ -328,8 +326,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const monthlyCost = calculateMonthlyCost(cost, cycle);
 
-    // Send subscription fields to the backend.
-    // The backend session identifies the logged-in user.
     const subscriptionData = {
       name,
       category,
@@ -354,17 +350,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       if (editId && existingSub) {
-        // Update the existing MongoDB document.
         await updateSubscriptionInAPI(
           existingSub.id,
           subscriptionData
         );
       } else {
-        // Create a new MongoDB document.
         await createSubscriptionInAPI(subscriptionData);
       }
 
-      // Refresh the browser cache from MongoDB after saving.
       await loadUserSubscriptionsFromAPI();
 
       showToast(
