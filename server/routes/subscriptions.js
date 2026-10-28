@@ -1,10 +1,8 @@
-// routes/subscriptions.js
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Subscription = require('../models/Subscription');
 
-// Get all subscriptions for current user
 router.get('/', auth, async (req, res) => {
   try {
     const subs = await Subscription.find({ userId: req.userId }).lean();
@@ -15,7 +13,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Create a new subscription
 router.post('/', auth, async (req, res) => {
   try {
     const data = req.body;
@@ -27,7 +24,6 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Get a single subscription
 router.get('/:id', auth, async (req, res) => {
   try {
     const sub = await Subscription.findOne({ _id: req.params.id, userId: req.userId }).lean();
@@ -39,7 +35,6 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Update subscription
 router.put('/:id', auth, async (req, res) => {
   try {
     const updated = await Subscription.findOneAndUpdate(
@@ -55,7 +50,6 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// Delete subscription
 router.delete('/:id', auth, async (req, res) => {
   try {
     const result = await Subscription.deleteOne({ _id: req.params.id, userId: req.userId });
