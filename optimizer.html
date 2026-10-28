@@ -82,7 +82,7 @@
         </div>
       </div>
 
-      <!-- OVERLAP & COST LEAK DETECTION SECTION -->
+      
       <div class="dashboard-panel" id="overlapSection">
         <div class="panel-header">
           <div>
@@ -95,7 +95,7 @@
         </div>
       </div>
 
-      <!-- BUDGET & OPTIMIZATION SECTION -->
+     
       <div class="dashboard-panel">
         <div class="panel-header">
           <div>
@@ -230,8 +230,7 @@ function generateRecommendedPortfolio(subscriptions, budget) {
     return costA - costB; // cheaper first within same priority
   });
 
-  // Greedy pass: walk through the sorted list and include each subscription
-  // as long as it fits within the remaining budget.
+
   const bestPortfolio = [];
   let remaining = budget;
   for (const sub of sorted) {
@@ -249,7 +248,7 @@ function generateRecommendedPortfolio(subscriptions, budget) {
 }
 
 function optimizeAdditional(subscriptions, budget) {
-  // Sort by priority DESC then cost ASC (cheaper wins tie), greedy fill.
+  
   const sorted = [...subscriptions].sort((a, b) => {
     const pDiff = priorityScore(b) - priorityScore(a);
     if (pDiff !== 0) return pDiff;
