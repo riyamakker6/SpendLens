@@ -11,7 +11,6 @@
 </head>
 <body>
 
-  <!-- Back Button -->
   <button type="button" class="auth-back-btn" onclick="goBack()">
     <span>←</span>
     <span>Back</span>
@@ -134,12 +133,9 @@
             return;
           }
 
-          // Disable demo mode for a real account.
           localStorage.removeItem(STORAGE.demoMode);
           localStorage.removeItem(STORAGE.demoOrigin);
 
-          // Store basic user details for existing UI code.
-          // Authentication is maintained by the backend session cookie.
           setCurrentUser({
             id: data.id,
             name: data.name,
@@ -162,7 +158,6 @@
         }
       });
 
-      // Keep the existing demo login functionality.
       demoButton.addEventListener("click", () => {
         localStorage.removeItem(STORAGE.currentUser);
         enterDemoMode("login");
