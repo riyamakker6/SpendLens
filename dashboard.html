@@ -64,7 +64,6 @@
         </div>
       </div>
 
-      <!-- STAT CARDS -->
       <div class="dashboard-stats">
         <div class="dash-card">
           <div class="card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
@@ -92,7 +91,6 @@
         </div>
       </div>
 
-      <!-- COST LEAKS -->
       <div class="dashboard-panel" id="costLeaksPanel" style="display:none;border-color:#FECACA;background:#FEF2F2;">
         <div class="panel-header" style="border-color:#FECACA;">
           <div>
@@ -104,7 +102,6 @@
         <div id="costLeaksList" style="padding:20px 24px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));"></div>
       </div>
 
-      <!-- BUDGET -->
       <div class="dashboard-panel">
         <div class="panel-header">
           <div><h2>Monthly Budget</h2><p>Set a limit for subscription spending.</p></div>
@@ -119,7 +116,6 @@
         <p id="budgetMessage" class="budget-message">No budget set.</p>
       </div>
 
-      <!-- RECENT -->
       <div class="dashboard-panel">
         <div class="panel-header">
           <div><h2>Recent Subscriptions</h2><p>Your latest recurring expenses.</p></div>
@@ -128,7 +124,6 @@
         <div id="recentSubscriptions" class="subscription-list"></div>
       </div>
 
-      <!-- RENEWALS -->
       <div class="dashboard-panel">
         <div class="panel-header">
           <div><h2>Upcoming Renewals</h2><p>Subscriptions renewing in the next 30 days.</p></div>
@@ -147,7 +142,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const user = getCurrentUser();
 
-  // ---- Time greeting badge ----
   const hour = new Date().getHours();
   const badgeEl = document.getElementById("timeBadge");
   if (badgeEl) {
@@ -157,7 +151,6 @@ document.addEventListener("DOMContentLoaded", () => {
     else badgeEl.textContent = "Good Night 🌙";
   }
 
-  // ---- Apply demo mode UI state ----
   function applyDemoUI() {
     const demo = isDemoMode();
     const demoBtn = document.getElementById("demoBtn");
@@ -166,31 +159,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const welcomeEl = document.getElementById("welcomeText");
     const badgeArea = document.getElementById("timeBadge").parentElement;
 
-    // Remove any existing demo badge
     const existingBadge = document.getElementById("demoModeBadge");
     if (existingBadge) existingBadge.remove();
 
     if (demo) {
-      // Update welcome text for demo
       if (welcomeEl) {
         welcomeEl.textContent = "Good to see you, Demo User! 👋";
       }
-      // Inject DEMO MODE badge next to welcome text
       const badge = document.createElement("span");
       badge.id = "demoModeBadge";
       badge.className = "demo-mode-badge";
       badge.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg> Demo Mode`;
       if (welcomeEl) welcomeEl.insertAdjacentElement("afterend", badge);
 
-      // Switch button to "Exit Demo"
       if (demoBtn) {
         demoBtn.textContent = "✕ Exit Demo";
         demoBtn.classList.remove("btn-secondary");
         demoBtn.classList.add("btn-demo-active");
       }
-      // Hide Add Subscription button
       if (addSubBtn) addSubBtn.style.display = "none";
-      // Disable Set Budget in demo mode
       if (setBudgetBtn) {
         setBudgetBtn.disabled = true;
         setBudgetBtn.title = "Budget editing is disabled in Demo Mode";
@@ -198,7 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
         setBudgetBtn.style.cursor = "not-allowed";
       }
     } else {
-      // Normal personal account
       const authUser = getAuthenticatedUser();
       if (authUser && authUser.name) {
         if (welcomeEl) welcomeEl.textContent = "Good to see you, " + authUser.name + "! 👋";
@@ -231,7 +217,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("totalSubsCount").textContent = subscriptions.length + " total tracked";
     document.getElementById("savingTotal").textContent = money(savings);
 
-    // Cost Leaks
     const leaksPanel = document.getElementById("costLeaksPanel");
     const leaksList = document.getElementById("costLeaksList");
     const leaksSubtitle = document.getElementById("leaksSubtitle");
@@ -321,7 +306,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderBudget(monthly) {
-    // In demo mode read from demo budget key, never touch personal budget
     const budgetKey = isDemoMode() ? STORAGE.demoBudget : STORAGE.budget;
     const budget = Number(localStorage.getItem(budgetKey) || 0);
     document.getElementById("budgetAmount").textContent = money(budget);
@@ -350,7 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("setBudgetBtn").addEventListener("click", () => {
-    if (isDemoMode()) return; // Guard: no budget editing in demo mode
+    if (isDemoMode()) return; 
     const current = localStorage.getItem(STORAGE.budget) || "";
     const val = prompt("Set monthly budget (₹):", current);
     if (val !== null) {
@@ -365,13 +349,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---- Quick Demo / Exit Demo button ----
   document.getElementById("demoBtn").addEventListener("click", () => {
     if (isDemoMode()) {
-      // EXIT DEMO MODE
       exitDemoMode((restoredUser) => {
         if (restoredUser) {
-          // CASE 2: Personal account restored in-place without logout!
           const banner = document.getElementById("demoBanner");
           if (banner) banner.remove();
           const sideLabel = document.getElementById("sidebarDemoLabel");
@@ -381,12 +362,10 @@ document.addEventListener("DOMContentLoaded", () => {
           renderDashboard();
           showToast("Demo Mode exited — welcome back, " + (restoredUser.name || "User") + "!");
         } else {
-          // CASE 1: Entered from login page -> redirect to clean login page
           window.location.href = "login.html";
         }
       });
     } else {
-      // ENTER DEMO MODE FROM PERSONAL ACCOUNT
       enterDemoMode("personal-account");
       applyDemoUI();
       initDemoBanner();
@@ -396,7 +375,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-  // Initial render
   applyDemoUI();
   initDemoBanner();
 
