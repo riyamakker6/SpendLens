@@ -273,7 +273,7 @@ function getDemoSubscriptions() {
    SUBSCRIPTION DATA (MONGODB API + LOCAL CACHE)
 ===================================================== */
 
-const SPENDLENS_API_BASE_URL = "http://127.0.0.1:5000/api";
+const SPENDLENS_API_BASE_URL = "https://spendlens-server.onrender.com/api";
 
 /**
  * Make requests to the backend.
