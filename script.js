@@ -231,7 +231,7 @@ function getDemoSubscriptions() {
 }
 
 
-const SPENDLENS_API_BASE_URL = "https://spendlens-server.onrender.com/api";
+const SPENDLENS_API_BASE_URL = "https://spendlens-api-c6w1.onrender.com/api";
 
 async function subscriptionApiRequest(path, options = {}) {
   const response = await fetch(`${SPENDLENS_API_BASE_URL}${path}`, {
